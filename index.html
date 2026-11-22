@@ -571,6 +571,17 @@
     font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:8px;
     background:rgba(132,204,22,0.12);color:var(--accent);
   }
+  .club-extra .line b{color:var(--text-hi);}
+  .club-extra .pre{white-space:pre-line;}
+  .recruit-pill{font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:8px;background:rgba(15,107,98,0.12);color:var(--accent-2);}
+  .club-manage-btn{width:100%;margin-top:12px;background:var(--bg-card);border:1px dashed var(--accent-2);color:var(--accent-2);border-radius:12px;padding:11px;font-weight:700;font-size:13px;}
+  .club-form label{font-size:12px;font-weight:700;color:var(--text-mid);display:block;margin:10px 0 5px;}
+  .club-form textarea{width:100%;min-height:70px;background:var(--bg-card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;font-size:14px;color:var(--text-hi);}
+  .club-form .chk{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;margin-top:10px;}
+  .admin-item{background:var(--bg-card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;font-size:13px;}
+  .admin-item .row{display:flex;gap:8px;margin-top:10px;}
+  .admin-item button{flex:1;border-radius:10px;padding:9px;font-weight:700;border:1px solid var(--line);background:var(--bg-primary);}
+  .admin-item button.ok{background:var(--accent-2);border-color:var(--accent-2);color:#fff;}
 </style>
 </head>
 <body>
@@ -745,6 +756,7 @@
           <div class="stat-box"><div class="stat-num" id="stat-added">0</div><div class="stat-lbl">Ajoutés</div></div>
         </div>
       </div>
+      <div id="admin-panel"></div>
       <div class="settings-item" id="open-legal" style="cursor:pointer;"><div class="left"><i data-lucide="shield" width="17" height="17"></i> Confidentialité & mentions légales</div><i data-lucide="chevron-right" width="17" height="17" style="color:var(--text-low)"></i></div>
       <a class="settings-item" id="open-support" style="text-decoration:none;"><div class="left"><i data-lucide="help-circle" width="17" height="17"></i> Aide & signalement</div><i data-lucide="chevron-right" width="17" height="17" style="color:var(--text-low)"></i></a>
       <div class="settings-item" id="open-about" style="border-bottom:none;cursor:pointer;"><div class="left"><i data-lucide="info" width="17" height="17"></i> À propos de VolleySpot</div><i data-lucide="chevron-right" width="17" height="17" style="color:var(--text-low)"></i></div>
@@ -791,6 +803,17 @@
       </div>
       <div id="profile-modal-error"></div>
       <button class="submit-btn" id="profile-modal-save"><i data-lucide="check" width="16" height="16"></i> Valider</button>
+    </div>
+  </div>
+
+  <!-- ===================== FICHE CLUB : REVENDICATION / ÉDITION ===================== -->
+  <div class="modal-backdrop" id="clubadmin-backdrop">
+    <div class="modal-card" style="max-width:420px;">
+      <div class="legend-title">
+        <span id="clubadmin-title">Fiche du club</span>
+        <button class="legend-close-btn" id="clubadmin-close"><i data-lucide="x" width="18" height="18"></i></button>
+      </div>
+      <div id="clubadmin-body" class="club-form"></div>
     </div>
   </div>
 
@@ -2271,6 +2294,7 @@ async function sbSetUser(user){
   try{ localStorage.removeItem('vs_pending_name'); }catch(e){}
   myProfile = { name: prof.display_name, email: user.email, id: user.id };
   renderProfileStats();
+  loadMyClaims().then(()=>{ if(typeof renderAdminPanel==='function') renderAdminPanel(); });
 }
 if(SB_ON){
   sb.auth.onAuthStateChange(async (event, session)=>{
@@ -2971,6 +2995,7 @@ function renderClubs(keepPage){
       <div class="club-tag-row">
         <div class="dep-pill">Dép. ${c.dep||'—'}</div>
         <div class="gender-pill">${c.gender}</div>
+        ${clubRecruitPill(c)}
       </div>
       <div class="cat-row">${pouleLabels(c.categories).map(cat=>`<div class="cat-pill ${isNationalLabel(cat)?'national '+nationalLevelClass(cat):''}">${cat}</div>`).join('')}</div>
       ${c.homeGym ? `<div class="practical-row" style="margin-top:12px;">
@@ -3062,6 +3087,7 @@ function clubSheetHTML(club){
             : ''}
         <button class="btn-ghost" id="btn-club-share"><i data-lucide="share-2" width="16" height="16"></i></button>
       </div>
+      ${clubDetailsHTML(club)}
       <a class="legal-link" href="${contactLink('VolleySpot — correction ou retrait : ' + club.name + ' (' + club.id.replace('club_','') + ')')}">Une info erronée ? Vous êtes ce club ? Demander une correction ou un retrait</a>
     </div>
   `;
@@ -3084,6 +3110,7 @@ function openClubFromMap(club){
   if(shareBtn) shareBtn.addEventListener('click', ()=> shareLink(club.name, `${club.name} — ${club.city}`, club.latitude, club.longitude));
   const favBtn = document.getElementById('sheet-fav-btn');
   if(favBtn) favBtn.addEventListener('click', ()=> toggleFavorite(club.id));
+  bindClubDetailsActions(club);
 }
 
 /* Partage réel : feuille de partage du téléphone si dispo, sinon copie d'un lien Google Maps. */
@@ -3097,6 +3124,142 @@ async function shareLink(title, text, lat, lon){
     showToast('Lien copié dans le presse-papiers','link');
   }catch(e){ showToast('Partage indisponible sur cet appareil','alert-triangle'); }
 }
+
+/* ===================== FICHES CLUB GÉRÉES PAR LES CLUBS ===================== */
+/* Un responsable revendique la fiche ; l'administrateur valide ; le club peut
+   ensuite renseigner horaires, tarifs, recrutement, essai gratuit et liens. */
+let CLUB_DETAILS = {};      // 'club_<id>' -> fiche
+let MY_CLAIMS = {};         // '<id>' -> statut de ma demande
+let IS_ADMIN = false;
+function rawClubId(club){ return String(club.id).replace('club_',''); }
+function safeUrl(u){ u = String(u||'').trim(); if(!u) return ''; if(!/^https?:\/\//i.test(u)) u = 'https://' + u; try{ const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.href : ''; }catch(e){ return ''; } }
+async function loadClubDetails(){
+  if(!SB_ON) return;
+  try{
+    const { data } = await sb.from('club_details').select('*');
+    CLUB_DETAILS = {}; (data||[]).forEach(d=>{ CLUB_DETAILS['club_'+d.club_id] = d; });
+    if(document.getElementById('view-clubs').classList.contains('active')) renderClubs(true);
+  }catch(e){}
+}
+async function loadMyClaims(){
+  if(!SB_ON || !myUid) return;
+  try{
+    const { data } = await sb.from('club_claims').select('club_id,status').eq('user_id', myUid);
+    MY_CLAIMS = {}; (data||[]).forEach(c=>{ MY_CLAIMS[c.club_id] = c.status; });
+    const { data: adm } = await sb.rpc('is_admin'); IS_ADMIN = !!adm;
+  }catch(e){}
+}
+function clubRecruitPill(c){
+  const d = CLUB_DETAILS[c.id]; if(!d) return '';
+  return (d.recruiting ? `<div class="recruit-pill">Recrute</div>` : '') + (d.trial ? `<div class="recruit-pill">Essai gratuit</div>` : '');
+}
+function clubDetailsHTML(club){
+  if(!SB_ON) return '';
+  const d = CLUB_DETAILS[club.id];
+  const st = MY_CLAIMS[rawClubId(club)];
+  let html = '';
+  if(d){
+    const links = [['website','globe','Site web'],['instagram','instagram','Instagram'],['facebook','facebook','Facebook']]
+      .map(([k,ic,lbl])=>{ const u = safeUrl(d[k]); return u ? `<a href="${esc(u)}" target="_blank" rel="noopener" class="badge" style="text-decoration:none;"><i data-lucide="${ic}" width="13" height="13"></i> ${lbl}</a>` : ''; }).join('');
+    html += `<div class="module club-extra">
+      <div class="module-title"><i data-lucide="badge-check" width="14" height="14"></i> Infos renseignées par le club</div>
+      <div class="badge-row" style="margin-top:0;">${d.recruiting ? `<div class="badge pos"><i data-lucide="user-plus" width="13" height="13"></i> Recrute</div>` : ''}${d.trial ? `<div class="badge pos"><i data-lucide="check" width="13" height="13"></i> Essai gratuit</div>` : ''}</div>
+      <div class="practical-row" style="margin-top:10px;">
+        ${d.recruiting && d.recruiting_note ? `<div class="line"><i data-lucide="megaphone" width="13" height="13"></i><span>${esc(d.recruiting_note)}</span></div>` : ''}
+        ${d.description ? `<div class="line"><i data-lucide="info" width="13" height="13"></i><span class="pre">${esc(d.description)}</span></div>` : ''}
+        ${d.schedule ? `<div class="line"><i data-lucide="clock" width="13" height="13"></i><span class="pre"><b>Entraînements</b>\n${esc(d.schedule)}</span></div>` : ''}
+        ${d.age_groups ? `<div class="line"><i data-lucide="users" width="13" height="13"></i><span><b>Catégories d'âge :</b> ${esc(d.age_groups)}</span></div>` : ''}
+        ${d.price ? `<div class="line"><i data-lucide="euro" width="13" height="13"></i><span><b>Licence :</b> ${esc(d.price)}</span></div>` : ''}
+      </div>
+      ${links ? `<div class="badge-row">${links}</div>` : ''}
+    </div>`;
+  }
+  if(st === 'approved' || IS_ADMIN) html += `<button class="club-manage-btn" id="club-edit-btn"><i data-lucide="pencil" width="14" height="14" style="vertical-align:-2px"></i> Modifier la fiche du club</button>`;
+  else if(st === 'pending') html += `<div class="profile-note" style="margin-top:12px;text-align:center;">Ta demande de gestion est en cours de vérification.</div>`;
+  else html += `<button class="club-manage-btn" id="club-claim-btn">Vous gérez ce club ? Complétez sa fiche</button>`;
+  return html;
+}
+function openClubAdmin(title, bodyHTML){
+  document.getElementById('clubadmin-title').textContent = title;
+  document.getElementById('clubadmin-body').innerHTML = bodyHTML;
+  document.getElementById('clubadmin-backdrop').classList.add('show');
+  refreshIcons();
+}
+function closeClubAdmin(){ document.getElementById('clubadmin-backdrop').classList.remove('show'); }
+document.getElementById('clubadmin-close').addEventListener('click', closeClubAdmin);
+document.getElementById('clubadmin-backdrop').addEventListener('click', e=>{ if(e.target.id==='clubadmin-backdrop') closeClubAdmin(); });
+function bindClubDetailsActions(club){
+  const claimBtn = document.getElementById('club-claim-btn');
+  if(claimBtn) claimBtn.addEventListener('click', ()=> requireProfile(()=> openClaimForm(club)));
+  const editBtn = document.getElementById('club-edit-btn');
+  if(editBtn) editBtn.addEventListener('click', ()=> openEditForm(club));
+}
+function openClaimForm(club){
+  openClubAdmin('Gérer ' + club.name, `
+    <div class="profile-note">Après vérification par VolleySpot, tu pourras compléter la fiche : horaires, tarifs, recrutement, essai gratuit, liens.</div>
+    <label>Ton rôle dans le club</label>
+    <select class="form-select" id="claim-role"><option>Président(e)</option><option>Secrétaire</option><option>Entraîneur</option><option>Bénévole / autre</option></select>
+    <label>Comment pouvons-nous vérifier ? <span style="font-weight:400">(email officiel du club, site, numéro d'affiliation…)</span></label>
+    <textarea id="claim-msg" maxlength="500"></textarea>
+    <div id="claim-err" style="color:var(--danger);font-size:12px;min-height:14px;margin-top:6px;"></div>
+    <button class="submit-btn" id="claim-send">Envoyer ma demande</button>`);
+  document.getElementById('claim-send').addEventListener('click', async ()=>{
+    const role = document.getElementById('claim-role').value;
+    const message = document.getElementById('claim-msg').value.trim();
+    if(message.length < 5){ document.getElementById('claim-err').textContent = 'Explique en quelques mots comment vérifier.'; return; }
+    const { error } = await sb.from('club_claims').insert({ club_id: rawClubId(club), role, message });
+    if(error){ document.getElementById('claim-err').textContent = /duplicate|unique/i.test(error.message) ? 'Tu as déjà fait une demande pour ce club.' : 'Envoi impossible : ' + error.message; return; }
+    MY_CLAIMS[rawClubId(club)] = 'pending';
+    closeClubAdmin(); showToast('Demande envoyée, merci !', 'check-circle'); openClubFromMap(club);
+  });
+}
+function openEditForm(club){
+  const d = CLUB_DETAILS[club.id] || {};
+  const v = k => esc(d[k] || '');
+  openClubAdmin('Fiche de ' + club.name, `
+    <label class="chk"><input type="checkbox" id="cd-recruiting" ${d.recruiting?'checked':''}> Le club recrute</label>
+    <label>Précision sur le recrutement</label><input class="form-input" id="cd-recruiting_note" maxlength="150" value="${v('recruiting_note')}" placeholder="ex : on cherche des passeuses pour l'équipe R2 F">
+    <label class="chk"><input type="checkbox" id="cd-trial" ${d.trial?'checked':''}> Séance d'essai gratuite</label>
+    <label>Présentation</label><textarea id="cd-description" maxlength="600">${v('description')}</textarea>
+    <label>Horaires d'entraînement</label><textarea id="cd-schedule" maxlength="800" placeholder="Lundi 20h-22h : seniors M&#10;Mercredi 18h-20h : jeunes">${v('schedule')}</textarea>
+    <label>Catégories d'âge</label><input class="form-input" id="cd-age_groups" maxlength="120" value="${v('age_groups')}" placeholder="M13 à seniors, loisirs">
+    <label>Prix de la licence</label><input class="form-input" id="cd-price" maxlength="80" value="${v('price')}" placeholder="ex : 150 € / an">
+    <label>Site web</label><input class="form-input" id="cd-website" maxlength="200" value="${v('website')}">
+    <label>Instagram</label><input class="form-input" id="cd-instagram" maxlength="200" value="${v('instagram')}">
+    <label>Facebook</label><input class="form-input" id="cd-facebook" maxlength="200" value="${v('facebook')}">
+    <div id="cd-err" style="color:var(--danger);font-size:12px;min-height:14px;margin-top:8px;"></div>
+    <button class="submit-btn" id="cd-save">Enregistrer la fiche</button>`);
+  document.getElementById('cd-save').addEventListener('click', async ()=>{
+    const row = { club_id: rawClubId(club) };
+    ['recruiting_note','description','schedule','age_groups','price','website','instagram','facebook'].forEach(k=>{ row[k] = document.getElementById('cd-'+k).value.trim() || null; });
+    ['website','instagram','facebook'].forEach(k=>{ if(row[k]) row[k] = safeUrl(row[k]) || null; });
+    row.recruiting = document.getElementById('cd-recruiting').checked;
+    row.trial = document.getElementById('cd-trial').checked;
+    const { error } = await sb.from('club_details').upsert(row);
+    if(error){ document.getElementById('cd-err').textContent = 'Enregistrement impossible : ' + error.message; return; }
+    CLUB_DETAILS[club.id] = Object.assign({}, d, row);
+    closeClubAdmin(); showToast('Fiche du club mise à jour', 'check-circle'); openClubFromMap(club);
+  });
+}
+/* Panneau de modération (visible uniquement par l'administrateur) */
+async function renderAdminPanel(){
+  const box = document.getElementById('admin-panel'); if(!box) return;
+  if(!SB_ON || !IS_ADMIN){ box.innerHTML = ''; return; }
+  const [{ data: claims }, { data: spotsP }] = await Promise.all([
+    sb.from('club_claims').select('id,club_id,role,message,contact_email,created_at').eq('status','pending').order('created_at'),
+    sb.from('user_spots').select('id,name,city,type_surface,latitude,longitude,created_at').eq('status','pending').order('created_at')
+  ]);
+  const clubName = id => (clubs.find(c=>c.id==='club_'+id)||{}).name || id;
+  box.innerHTML = `<div class="filter-section-label" style="padding:4px 0 8px;">Modération</div>` +
+    ((claims||[]).length || (spotsP||[]).length ? '' : `<div class="profile-note">Rien à valider pour l'instant.</div>`) +
+    (claims||[]).map(c=>`<div class="admin-item"><b>Gestion : ${esc(clubName(c.club_id))}</b><br>${esc(c.role||'')} · ${esc(c.contact_email||'')}<br><span style="color:var(--text-mid)">${esc(c.message||'')}</span>
+      <div class="row"><button data-claim="${c.id}" data-st="rejected">Refuser</button><button class="ok" data-claim="${c.id}" data-st="approved">Valider</button></div></div>`).join('') +
+    (spotsP||[]).map(s=>`<div class="admin-item"><b>Terrain : ${esc(s.name)}</b><br>${esc(s.city)} · ${esc((SURFACE_META[s.type_surface]||{}).label||s.type_surface)} · <a href="https://www.google.com/maps/search/?api=1&query=${s.latitude},${s.longitude}" target="_blank" rel="noopener">voir la position</a>
+      <div class="row"><button data-spot="${s.id}" data-st="rejected">Refuser</button><button class="ok" data-spot="${s.id}" data-st="approved">Publier</button></div></div>`).join('');
+  box.querySelectorAll('[data-claim]').forEach(b=>b.addEventListener('click', async ()=>{ await sb.from('club_claims').update({ status:b.dataset.st }).eq('id', b.dataset.claim); showToast(b.dataset.st==='approved'?'Demande validée':'Demande refusée','check-circle'); renderAdminPanel(); }));
+  box.querySelectorAll('[data-spot]').forEach(b=>b.addEventListener('click', async ()=>{ await sb.from('user_spots').update({ status:b.dataset.st }).eq('id', b.dataset.spot); showToast(b.dataset.st==='approved'?'Terrain publié':'Terrain refusé','check-circle'); renderAdminPanel(); if(b.dataset.st==='approved') loadUserSpots(); }));
+}
+loadClubDetails();
 
 /* ===================== ADD SPOT VIEW ===================== */
 let newSpotSurface = 'sable';
