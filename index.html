@@ -1275,12 +1275,22 @@ const gymSpots = REAL_GYMS_RAW.map((g,i)=>({
 }));
 spots = spots.concat(gymSpots);
 
+/* La FFVolley donne parfois l'adresse postale d'un dirigeant (autre département) :
+   on affiche alors la ville de la salle principale. */
+function pcDep(pc){ pc=String(pc||'').trim(); if(pc.length<5) return ''; if(pc.startsWith('97')) return pc.slice(0,3); if(pc.startsWith('20')) return '2'; return pc.slice(0,2); }
+function clubPlace(c, g){
+  const dep = String(c.dep || String(c.id||'').slice(1,3)).replace(/^2[AB]$/,'2');
+  const d = pcDep(c.postcode), cmp = d==='2' ? '2' : d;
+  const mismatch = d && dep && !(cmp===dep || (dep.length===3 ? d===dep : d===dep.slice(0,2)) || (d==='2' && dep.startsWith('2')));
+  if((mismatch || !c.city) && g && g.city) return { city:g.city, postcode:g.postcode || c.postcode };
+  return { city:c.city, postcode:c.postcode };
+}
 /* Clubs réels FFVolley Île-de-France */
 let clubs = REAL_CLUBS_RAW.concat(EXTRA_IDF_CLUBS_RAW).concat(EXTRA_HDF_CLUBS_RAW).concat(PACA_CLUBS_RAW).concat(PDL_CLUBS_RAW).concat(OCCITANIE_CLUBS_RAW).concat(NOUVELLE_AQUITAINE_CLUBS_RAW).concat(NORMANDIE_CLUBS_RAW).concat(AURA_CLUBS_RAW).concat(BFC_CLUBS_RAW).concat(BRETAGNE_CLUBS_RAW).concat(CVL_CLUBS_RAW).concat(GE_CLUBS_RAW).concat(HDF2_CLUBS_RAW).map(c=>{
   const homeGym = (c.gyms && c.gyms[0]) ? c.gyms[0] : null;
   return {
     id:'club_'+c.id,
-    name:(c.name||'').trim(), city:c.city, postcode:c.postcode,
+    name:(c.name||'').trim(), ...clubPlace(c, homeGym),
     /* Le numéro d'affiliation commence par 0 + n° de département : sert de secours si dep manque. */
     dep: c.dep || String(c.id||'').slice(1,3),
     address:c.address,
