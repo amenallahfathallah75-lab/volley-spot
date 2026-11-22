@@ -12,13 +12,13 @@
 <meta name="description" content="Clubs FFVolley, gymnases et terrains de beach, green et street volley partout en France." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=Fraunces:ital,opsz,wght@0,9..144,500;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" />
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/lucide@0.276.0/dist/umd/lucide.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
+<link rel="stylesheet" href="vendor/markercluster/MarkerCluster.css" />
+<link rel="stylesheet" href="vendor/markercluster/MarkerCluster.Default.css" />
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="vendor/markercluster/leaflet.markercluster.js"></script>
+<script src="vendor/lucide.min.js"></script>
+<script src="vendor/supabase.js"></script>
 <style>
   :root{
     --bg-void:#E7DFC9;
@@ -1055,7 +1055,7 @@ function clubBadgeHTML(club, size){
   size = size || 34;
   if(club.logo){
     const pad = Math.round(size*0.1);
-    return `<div style="width:${size}px;height:${size}px;border-radius:${Math.round(size*0.28)}px;background:var(--bg-primary);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,0.25);padding:${pad}px;box-sizing:border-box;"><img src="${club.logo}" onerror="if(!this.dataset.r){this.dataset.r=1;this.src=this.src.replace('/logos/','/');}" alt="${club.name}" style="width:100%;height:100%;object-fit:contain;"></div>`;
+    return `<div style="width:${size}px;height:${size}px;border-radius:${Math.round(size*0.28)}px;background:var(--bg-primary);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,0.25);padding:${pad}px;box-sizing:border-box;"><img src="${club.logo}" alt="${club.name}" style="width:100%;height:100%;object-fit:contain;"></div>`;
   }
   const colors = parseClubColors(club.couleurs);
   const initials = clubInitials(club.name);
