@@ -240,7 +240,7 @@
     width:38px;height:38px;border-radius:12px;background:var(--bg-primary);border:1px solid var(--line);
     display:flex;align-items:center;justify-content:center;color:var(--text-mid);flex-shrink:0;
   }
-  .fav-btn.active{color:var(--danger);border-color:var(--danger);}
+  .fav-btn.active{color:#f5b301;border-color:#f5b301;}
 
   .badge-row{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px;}
   .badge{
@@ -895,7 +895,7 @@
     <button class="nav-btn active" data-view="map"><i data-lucide="map" width="20" height="20"></i>Carte</button>
     <button class="nav-btn" data-view="clubs"><i data-lucide="shield-half" width="20" height="20"></i>Clubs</button>
     <button class="nav-btn" data-view="add"><div class="fab"><i data-lucide="plus" width="22" height="22"></i></div></button>
-    <button class="nav-btn" data-view="favorites"><i data-lucide="heart" width="20" height="20"></i>Favoris</button>
+    <button class="nav-btn" data-view="favorites"><i data-lucide="star" width="20" height="20"></i>Favoris</button>
     <button class="nav-btn" data-view="profile"><i data-lucide="user" width="20" height="20"></i>Profil</button>
   </div>
 
@@ -2084,7 +2084,7 @@ function sheetSpotHTML(spot){
           <div class="sheet-title">${esc(displayTitle)}</div>
           <div class="sheet-sub"><i data-lucide="map-pin" width="13" height="13"></i>${esc(isGym ? spot.city : spot.address + ', ' + spot.city)}</div>
         </div>
-        <button class="fav-btn ${isFav?'active':''}" id="sheet-fav-btn"><i data-lucide="heart" width="18" height="18" ${isFav?'fill="currentColor"':''}></i></button>
+        <button class="fav-btn ${isFav?'active':''}" id="sheet-fav-btn"><i data-lucide="star" width="18" height="18" ${isFav?'fill="currentColor"':''}></i></button>
       </div>
 
       <div class="badge-row">
@@ -2237,9 +2237,9 @@ function toggleFavorite(id){
   const btn = document.getElementById('sheet-fav-btn');
   const isFav = favorites.has(id);
   btn.classList.toggle('active', isFav);
-  btn.innerHTML = `<i data-lucide="heart" width="18" height="18" ${isFav?'fill="currentColor"':''}></i>`;
+  btn.innerHTML = `<i data-lucide="star" width="18" height="18" ${isFav?'fill="currentColor"':''}></i>`;
   refreshIcons();
-  showToast(isFav?'Ajouté aux favoris':'Retiré des favoris', 'heart');
+  showToast(isFav?'Ajouté aux favoris':'Retiré des favoris', 'star');
   saveFavorites();
 }
 
@@ -3048,7 +3048,7 @@ function clubSheetHTML(club){
             <div class="sheet-sub"><i data-lucide="map-pin" width="13" height="13"></i>${club.city}${club.postcode?' ('+club.postcode+')':''}</div>
           </div>
         </div>
-        <button class="fav-btn ${isFav?'active':''}" id="sheet-fav-btn" aria-label="Favori"><i data-lucide="heart" width="18" height="18" ${isFav?'fill="currentColor"':''}></i></button>
+        <button class="fav-btn ${isFav?'active':''}" id="sheet-fav-btn" aria-label="Favori"><i data-lucide="star" width="18" height="18" ${isFav?'fill="currentColor"':''}></i></button>
       </div>
 
       <div class="badge-row">
@@ -3360,7 +3360,7 @@ function renderFavorites(){
   const favSpots = spots.filter(s=>favorites.has(s.id));
   const favClubs = clubs.filter(c=>favorites.has(c.id));
   if(!favSpots.length && !favClubs.length){
-    list.innerHTML = `<div class="empty-state"><div class="icon-wrap"><i data-lucide="heart" width="24" height="24"></i></div><div class="t">Pas encore de favoris</div>Enregistre tes clubs et terrains préférés avec le ♥ de leur fiche.</div>`;
+    list.innerHTML = `<div class="empty-state"><div class="icon-wrap"><i data-lucide="star" width="24" height="24"></i></div><div class="t">Pas encore de favoris</div>Enregistre tes clubs et terrains préférés avec le ♥ de leur fiche.</div>`;
     refreshIcons();
     return;
   }
