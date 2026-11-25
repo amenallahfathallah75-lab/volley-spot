@@ -1747,7 +1747,166 @@ function mergeDuplicateGyms(){
   });
   return merged;
 }
+/* ===================== ÉDITION DE LA CARTE (ADMINISTRATEURS) =====================
+   Les corrections (nom, adresse, type, position, suppression) sont stockées dans
+   la table Supabase map_overrides, lisible par tous et modifiable par les seuls
+   administrateurs. Elles sont appliquées par-dessus les données d'origine à
+   chaque affichage ; annuler une correction rétablit le point d'origine. */
+let MAP_OV = {};
+try{ MAP_OV = JSON.parse(localStorage.getItem('vs_map_ov') || '{}') || {}; }catch(e){ MAP_OV = {}; }
+function ovKey(o){ return (o && o.type_surface === 'gymnase' && o.geo_key) ? 'g:' + o.geo_key : (o ? o.id : ''); }
+function ovPatch(x, o){
+  if(o.name) x.name = o.name;
+  if(o.address) x.address = o.address;
+  if(o.city) x.city = o.city;
+  if(o.type_surface && x.type_surface !== 'gymnase' && o.type_surface !== 'gymnase') x.type_surface = o.type_surface;
+  if(o.latitude != null && o.longitude != null){ x.latitude = o.latitude; x.longitude = o.longitude; x.geo_approx = false; x.geo_level = 0; }
+}
+function applyMapOverrides(){
+  if(!MAP_OV || !Object.keys(MAP_OV).length) return;
+  spots = spots.filter(s=>{
+    const o = MAP_OV[ovKey(s)];
+    if(!o) return true;
+    if(o.hidden) return false;
+    ovPatch(s, o); return true;
+  });
+  clubs = clubs.filter(c=>{
+    const o = MAP_OV[c.id];
+    if(o && o.hidden){ if(clubsByName[c.name] === c) delete clubsByName[c.name]; return false; }
+    const g = c.geo_key ? MAP_OV['g:' + c.geo_key] : null;
+    if(g && !g.hidden && g.latitude != null){ c.latitude = g.latitude; c.longitude = g.longitude; c.geo_approx = false; c.geo_level = 0; }
+    if(o) ovPatch(c, o);
+    return true;
+  });
+}
+async function loadMapOverrides(){
+  if(!SB_ON) return;
+  try{
+    const { data, error } = await sb.from('map_overrides').select('*');
+    if(error) return;
+    MAP_OV = {}; (data || []).forEach(r=>{ MAP_OV[r.key] = r; });
+    try{ localStorage.setItem('vs_map_ov', JSON.stringify(MAP_OV)); }catch(e){}
+    renderMarkers();
+  }catch(e){}
+}
+async function saveMapOverride(row){
+  const payload = Object.assign({}, row, { updated_at: new Date().toISOString() });
+  const { data, error } = await sb.from('map_overrides').upsert(payload, { onConflict:'key' }).select().maybeSingle();
+  if(error){ showToast('Enregistrement impossible : ' + error.message, 'alert-circle'); return false; }
+  MAP_OV[row.key] = Object.assign({}, MAP_OV[row.key] || {}, data || payload);
+  try{ localStorage.setItem('vs_map_ov', JSON.stringify(MAP_OV)); }catch(e){}
+  return true;
+}
+function adminBarHTML(kind, target){
+  if(!SB_ON || typeof IS_ADMIN === 'undefined' || !IS_ADMIN) return '';
+  const delLabel = kind === 'club' ? 'Masquer le club' : 'Supprimer';
+  return `<div class="module" id="admin-bar" style="border:1.5px dashed var(--accent);">
+    <div class="module-title"><i data-lucide="shield-check" width="14" height="14"></i> Administration</div>
+    <div class="action-row" style="margin-top:0;gap:8px;flex-wrap:wrap;">
+      <button class="btn-ghost" data-adm="edit" style="flex:1;justify-content:center;"><i data-lucide="pencil" width="15" height="15"></i> Modifier</button>
+      <button class="btn-ghost" data-adm="move" style="flex:1;justify-content:center;"><i data-lucide="move" width="15" height="15"></i> Déplacer</button>
+      <button class="btn-ghost" data-adm="hide" style="flex:1;justify-content:center;color:var(--danger);"><i data-lucide="trash-2" width="15" height="15"></i> ${delLabel}</button>
+    </div>
+    <div id="admin-edit-form" style="display:none;margin-top:10px;"></div>
+  </div>`;
+}
+function bindAdminBar(kind, target){
+  if(!SB_ON || typeof IS_ADMIN === 'undefined' || !IS_ADMIN) return;
+  const body = sheetEl.querySelector('.sheet-body') || sheetEl;
+  body.insertAdjacentHTML('beforeend', adminBarHTML(kind, target));
+  refreshIcons();
+  const isClub = kind === 'club';
+  /* Pour un club : la position suit son gymnase principal (partagé par d'autres clubs le cas échéant). */
+  const posKey = isClub ? (target.homeGym && target.geo_key ? 'g:' + target.geo_key : target.id) : ovKey(target);
+  const editKey = isClub ? target.id : ovKey(target);
+  const label = target.name || '';
+  const form = document.getElementById('admin-edit-form');
+  sheetEl.querySelector('[data-adm="edit"]').addEventListener('click', ()=>{
+    if(form.style.display === 'block'){ form.style.display = 'none'; return; }
+    const isGym = target.type_surface === 'gymnase';
+    form.innerHTML = `
+      <label class="form-label">Nom</label><input class="form-input" id="adm-name" value="${esc(target.name||'')}">
+      ${isClub ? '' : `<label class="form-label" style="margin-top:8px;">Adresse</label><input class="form-input" id="adm-address" value="${esc(target.address||'')}">`}
+      <label class="form-label" style="margin-top:8px;">Ville</label><input class="form-input" id="adm-city" value="${esc(target.city||'')}">
+      ${(!isClub && !isGym) ? `<label class="form-label" style="margin-top:8px;">Type de terrain</label>
+        <select class="form-input" id="adm-type">${['sable','herbe','bitume'].map(t=>`<option value="${t}" ${target.type_surface===t?'selected':''}>${esc((SURFACE_META[t]||{}).label||t)}</option>`).join('')}</select>` : ''}
+      <button class="submit-btn" id="adm-save" style="margin-top:12px;">Enregistrer</button>`;
+    form.style.display = 'block';
+    document.getElementById('adm-save').addEventListener('click', async ()=>{
+      const row = { key: editKey, label, hidden:false,
+        name: document.getElementById('adm-name').value.trim() || null,
+        city: document.getElementById('adm-city').value.trim() || null };
+      const a = document.getElementById('adm-address'); if(a) row.address = a.value.trim() || null;
+      const t = document.getElementById('adm-type'); if(t) row.type_surface = t.value;
+      if(await saveMapOverride(row)){
+        ovPatch(target, row); renderMarkers(); showToast('Modification enregistrée', 'check');
+        isClub ? openClubFromMap(target) : openSheet(target.id);
+      }
+    });
+  });
+  sheetEl.querySelector('[data-adm="move"]').addEventListener('click', ()=>{
+    startMapMove(posKey, isClub && target.homeGym ? (target.homeGym.name || label) : label, target.latitude, target.longitude, (lat, lon)=>{
+      target.latitude = lat; target.longitude = lon;
+    });
+  });
+  sheetEl.querySelector('[data-adm="hide"]').addEventListener('click', async ()=>{
+    const what = isClub ? `le club « ${label} »` : `« ${label} »`;
+    if(!confirm(`Retirer ${what} de la carte ?\nTu pourras l'annuler depuis Profil → Modération.`)) return;
+    if(await saveMapOverride({ key: editKey, label, hidden:true })){
+      closeSheet(); renderMarkers(); if(typeof updateLandingCounts === 'function') updateLandingCounts();
+      showToast('Point retiré de la carte', 'trash-2');
+    }
+  });
+}
+let moveCtx = null;
+function startMapMove(key, label, lat, lon, onDone){
+  if(lat == null || lon == null){ const c = map.getCenter(); lat = c.lat; lon = c.lng; }
+  closeSheet();
+  if(moveCtx) moveCtx.cancel();
+  const pin = L.marker([lat, lon], { draggable:true, zIndexOffset:10000,
+    icon: L.divIcon({ className:'', html:'<div style="width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--accent);border:3px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.35)"></div>', iconSize:[30,30], iconAnchor:[15,30] }) }).addTo(map);
+  map.setView([lat, lon], Math.max(map.getZoom(), 17));
+  const bar = document.createElement('div');
+  bar.id = 'move-bar';
+  bar.style.cssText = 'position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top));transform:translateX(-50%);z-index:2000;background:#fff;border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.25);padding:12px 14px;width:min(92vw,420px);font-size:14px;';
+  bar.innerHTML = `<div style="font-weight:700;margin-bottom:4px;">Déplacer « ${esc(label)} »</div>
+    <div style="color:var(--text-mid);font-size:12.5px;margin-bottom:10px;">Fais glisser l'épingle ou touche la carte à l'endroit exact.</div>
+    <div style="display:flex;gap:8px;"><button class="btn-ghost" id="move-cancel" style="flex:1;justify-content:center;">Annuler</button>
+    <button class="btn-primary" id="move-ok" style="flex:1;justify-content:center;">Valider la position</button></div>`;
+  document.body.appendChild(bar);
+  const onClick = e => pin.setLatLng(e.latlng);
+  map.on('click', onClick);
+  const cleanup = ()=>{ map.off('click', onClick); map.removeLayer(pin); bar.remove(); moveCtx = null; };
+  moveCtx = { cancel: cleanup };
+  bar.querySelector('#move-cancel').addEventListener('click', cleanup);
+  bar.querySelector('#move-ok').addEventListener('click', async ()=>{
+    const ll = pin.getLatLng();
+    const latN = Math.round(ll.lat*1e6)/1e6, lonN = Math.round(ll.lng*1e6)/1e6;
+    if(await saveMapOverride({ key, label, hidden:false, latitude: latN, longitude: lonN })){
+      if(onDone) onDone(latN, lonN);
+      cleanup(); renderMarkers(); showToast('Nouvelle position enregistrée', 'check');
+    }
+  });
+}
+function adminOverridesHTML(){
+  const rows = Object.values(MAP_OV || {}).sort((a,b)=> String(b.updated_at||'').localeCompare(String(a.updated_at||'')));
+  if(!rows.length) return '';
+  const what = r => r.hidden ? 'retiré' : [r.latitude!=null ? 'déplacé' : '', (r.name||r.address||r.city||r.type_surface) ? 'modifié' : ''].filter(Boolean).join(' + ') || 'modifié';
+  return `<div class="filter-section-label" style="padding:12px 0 8px;">Modifications de la carte (${rows.length})</div>` +
+    rows.slice(0, 40).map(r=>`<div class="admin-item"><b>${esc(r.name || r.label || r.key)}</b><br><span style="color:var(--text-mid)">${esc(what(r))} · ${esc(String(r.updated_at||'').slice(0,10))}</span>
+      <div class="row"><button data-ov-undo="${esc(r.key)}">Annuler cette modification</button></div></div>`).join('');
+}
+async function undoMapOverride(key){
+  const { error } = await sb.from('map_overrides').delete().eq('key', key);
+  if(error){ showToast('Annulation impossible : ' + error.message, 'alert-circle'); return; }
+  delete MAP_OV[key];
+  try{ localStorage.setItem('vs_map_ov', JSON.stringify(MAP_OV)); }catch(e){}
+  showToast('Modification annulée, rechargement…', 'rotate-ccw');
+  setTimeout(()=> location.reload(), 700);
+}
+
 function renderMarkers(){
+  applyMapOverrides();
   mergeDuplicateGyms();
   markersLayer.clearLayers();
   renderedSpotIds = new Set();
@@ -1765,7 +1924,7 @@ function renderMarkers(){
   }
   spots.filter(passesFilter).forEach(s=>{
     const gymClub = (s.type_surface==='gymnase' && s.usedByClubs && s.usedByClubs.length)
-      ? clubsByName[s.usedByClubs[0]] : null;
+      ? (s.usedByClubs.map(n=>clubsByName[n]).find(Boolean) || null) : null;
     const icon = gymClub ? makeGymClubIcon(gymClub) : makeIcon('spot', SURFACE_META[s.type_surface]);
     const m = L.marker([s.latitude, s.longitude], { icon });
     m.on('click', ()=> gymClub ? openClubFromMap(gymClub) : openSheet(s.id));
@@ -1780,7 +1939,7 @@ renderMarkers();
 function addSpotMarkerIncremental(s){
   if(renderedSpotIds.has(s.id) || activeFilter==='clubs' || !passesFilter(s)) return;
   const gymClub = (s.type_surface==='gymnase' && s.usedByClubs && s.usedByClubs.length)
-    ? clubsByName[s.usedByClubs[0]] : null;
+    ? (s.usedByClubs.map(n=>clubsByName[n]).find(Boolean) || null) : null;
   const icon = gymClub ? makeGymClubIcon(gymClub) : makeIcon('spot', SURFACE_META[s.type_surface]);
   const m = L.marker([s.latitude, s.longitude], { icon });
   m.on('click', ()=> gymClub ? openClubFromMap(gymClub) : openSheet(s.id));
@@ -2260,6 +2419,7 @@ function openSheet(spotId){
   sheetEl.classList.add('show');
 
   document.getElementById('sheet-fav-btn').addEventListener('click', ()=> toggleFavorite(spot.id));
+  bindAdminBar('spot', spot);
   const checkinBtn = document.getElementById('btn-checkin');
   if(checkinBtn){
     checkinBtn.addEventListener('click', ()=>{
@@ -3291,6 +3451,7 @@ function openClubFromMap(club){
   const favBtn = document.getElementById('sheet-fav-btn');
   if(favBtn) favBtn.addEventListener('click', ()=> toggleFavorite(club.id));
   bindClubDetailsActions(club);
+  bindAdminBar('club', club);
 }
 
 /* Partage réel : feuille de partage du téléphone si dispo, sinon copie d'un lien Google Maps. */
@@ -3470,7 +3631,10 @@ async function renderAdminPanel(){
     (claims||[]).map(c=>`<div class="admin-item"><b>Gestion : ${esc(clubName(c.club_id))}</b><br>${esc(c.role||'')} · ${esc(c.contact_email||'')}<br><span style="color:var(--text-mid)">${esc(c.message||'')}</span>
       <div class="row"><button data-claim="${c.id}" data-st="rejected">Refuser</button><button class="ok" data-claim="${c.id}" data-st="approved">Valider</button></div></div>`).join('') +
     (spotsP||[]).map(s=>`<div class="admin-item"><b>Terrain : ${esc(s.name)}</b><br>${esc(s.city)} · ${esc((SURFACE_META[s.type_surface]||{}).label||s.type_surface)} · <a href="https://www.google.com/maps/search/?api=1&query=${s.latitude},${s.longitude}" target="_blank" rel="noopener">voir la position</a>
-      <div class="row"><button data-spot="${s.id}" data-st="rejected">Refuser</button><button class="ok" data-spot="${s.id}" data-st="approved">Publier</button></div></div>`).join('');
+      <div class="row"><button data-spot="${s.id}" data-st="rejected">Refuser</button><button class="ok" data-spot="${s.id}" data-st="approved">Publier</button></div></div>`).join('') +
+    `<div class="profile-note" style="margin-top:10px;">Pour modifier, déplacer ou supprimer un point : ouvre sa fiche sur la carte, la rubrique « Administration » est en bas.</div>` +
+    adminOverridesHTML();
+  box.querySelectorAll('[data-ov-undo]').forEach(b=>b.addEventListener('click', ()=>{ if(confirm('Annuler cette modification et rétablir le point d’origine ?')) undoMapOverride(b.dataset.ovUndo); }));
   box.querySelectorAll('[data-claim]').forEach(b=>b.addEventListener('click', async ()=>{ await sb.from('club_claims').update({ status:b.dataset.st }).eq('id', b.dataset.claim); showToast(b.dataset.st==='approved'?'Demande validée':'Demande refusée','check-circle'); renderAdminPanel(); }));
   box.querySelectorAll('[data-spot]').forEach(b=>b.addEventListener('click', async ()=>{ await sb.from('user_spots').update({ status:b.dataset.st }).eq('id', b.dataset.spot); showToast(b.dataset.st==='approved'?'Terrain publié':'Terrain refusé','check-circle'); renderAdminPanel(); if(b.dataset.st==='approved') loadUserSpots(); }));
 }
@@ -3797,6 +3961,7 @@ window.addEventListener('load', ()=> map.invalidateSize());
 loadFavorites();
 loadUserSpots();
 loadProfile();
+loadMapOverrides();
 
 /* ===================== ÉCRAN D'ACCUEIL : logique ===================== */
 /* Affiche le nombre réel de lieux sous chaque choix de l'accueil (mis à jour
