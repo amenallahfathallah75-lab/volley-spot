@@ -618,6 +618,7 @@
         <div class="landing-emoji">🗺️</div>
         <div class="landing-label">Afficher la carte</div>
       </button>
+      <a href="clubs/" style="display:block;text-align:center;margin-top:14px;font-size:13px;color:var(--text-mid);">Annuaire des clubs par département</a>
     </div>
   </div>
 
@@ -3142,13 +3143,19 @@ function openClubFromMap(club){
     });
   }
   const shareBtn = document.getElementById('btn-club-share');
-  if(shareBtn) shareBtn.addEventListener('click', ()=> shareLink(club.name, `${club.name} — ${club.city}`, club.latitude, club.longitude));
+  if(shareBtn) shareBtn.addEventListener('click', ()=> shareClub(club));
   const favBtn = document.getElementById('sheet-fav-btn');
   if(favBtn) favBtn.addEventListener('click', ()=> toggleFavorite(club.id));
   bindClubDetailsActions(club);
 }
 
 /* Partage réel : feuille de partage du téléphone si dispo, sinon copie d'un lien Google Maps. */
+async function shareClub(club){
+  const url = clubPageUrl(club), text = `${club.name} — club de volley à ${club.city}`;
+  try{ if(navigator.share){ await navigator.share({ title: club.name, text, url }); return; } }catch(e){ if(e && e.name === 'AbortError') return; }
+  try{ await navigator.clipboard.writeText(url); showToast('Lien copié dans le presse-papiers','link'); }
+  catch(e){ showToast('Partage indisponible sur cet appareil','alert-triangle'); }
+}
 async function shareLink(title, text, lat, lon){
   const url = (lat!=null && lon!=null) ? `https://www.google.com/maps/search/?api=1&query=${lat},${lon}` : '';
   try{
@@ -3717,6 +3724,22 @@ document.querySelectorAll('.landing-card').forEach(card=>{
     }
   });
 });
+
+/* Lien direct vers un club : ?club=0279428 (utilisé par les pages club et le partage). */
+function clubSlug(c){ return (norm(c.name).replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,70) || 'club') + '-' + rawClubId(c); }
+function clubPageUrl(c){ return new URL('club/' + clubSlug(c) + '.html', location.href.split('?')[0].replace(/[^/]*$/,'')).href; }
+(function openClubFromUrl(){
+  let id = null; try{ id = new URLSearchParams(location.search).get('club'); }catch(e){}
+  if(!id) return;
+  const club = clubs.find(c=>c.id==='club_'+id); if(!club) return;
+  hideLandingScreen();
+  let tries = 0;
+  (function go(){
+    if(club.latitude==null && tries++ < 30){ setTimeout(go, 100); return; }
+    if(club.latitude!=null) map.setView([club.latitude, club.longitude], 13);
+    openClubFromMap(club);
+  })();
+})();
 
 })();
 </script>

@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://amenallahfathallah75-lab.github.io/volley-spot/sitemap.xml
