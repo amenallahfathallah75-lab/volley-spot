@@ -593,6 +593,40 @@
   .admin-item .row{display:flex;gap:8px;margin-top:10px;}
   .admin-item button{flex:1;border-radius:10px;padding:9px;font-weight:700;border:1px solid var(--line);background:var(--bg-primary);}
   .admin-item button.ok{background:var(--accent-2);border-color:var(--accent-2);color:#fff;}
+
+  /* ===================== VERSION ORDINATEUR (≥ 1024 px) =====================
+     Carte en plein écran, toujours visible ; recherche, fiches et pages
+     (annuaire, favoris, profil…) dans un panneau à gauche. */
+  @media (min-width:1024px){
+    :root{ --panel-w:440px; --nav-h:66px; }
+    #app{ max-width:none; box-shadow:none; display:block; }
+    #view-map{ display:block !important; position:absolute; inset:0; }
+    .view:not(#view-map).active{
+      position:absolute; left:0; top:0; bottom:var(--nav-h); width:var(--panel-w); z-index:650;
+      background:var(--bg-primary); box-shadow:6px 0 28px rgba(24,43,46,.14); border-right:1px solid var(--line);
+    }
+    #bottom-nav{ position:absolute; left:0; bottom:0; width:var(--panel-w); height:var(--nav-h); box-sizing:border-box; padding-top:6px; padding-bottom:6px;
+      border-right:1px solid var(--line); box-shadow:6px 0 28px rgba(24,43,46,.10); }
+    .map-topbar{ right:auto; width:var(--panel-w); box-sizing:border-box; background:none; padding:16px; }
+    .map-topbar .brand-row, .map-topbar .search-row{ background:rgba(255,255,255,.96); border-radius:16px; box-shadow:0 6px 20px rgba(24,43,46,.12); }
+    .map-topbar .brand-row{ padding:10px 14px; margin-bottom:10px; }
+    .map-topbar .search-row{ padding:8px; }
+    .map-topbar .filter-row{ flex-wrap:wrap; overflow:visible; row-gap:8px; }
+    #sheet-backdrop{ display:none; }
+    #sheet{ left:0; right:auto; top:0; bottom:var(--nav-h); width:var(--panel-w); max-height:none; border-radius:0;
+      transform:translateX(-104%); box-shadow:6px 0 28px rgba(24,43,46,.18); padding-bottom:24px; z-index:640; }
+    #sheet.show{ transform:translateX(0); }
+    #sheet .sheet-handle{ display:none; }
+    #sheet #sheet-close-desktop{ display:flex; }
+    .leaflet-control-zoom{ margin-top:16px !important; margin-right:16px !important; }
+    #landing-screen{ background:rgba(245,241,231,.82); backdrop-filter:blur(6px); }
+    .landing-content{ background:var(--bg-primary); border-radius:28px; padding:34px 30px; box-shadow:0 24px 60px rgba(24,43,46,.18); max-width:460px; }
+    #move-bar{ left:calc(var(--panel-w) + (100vw - var(--panel-w))/2) !important; }
+  }
+  #sheet-close-desktop{ display:none; position:sticky; top:0; z-index:6; width:100%; height:42px; box-sizing:border-box;
+    align-items:center; justify-content:flex-end; gap:6px; padding:0 16px; border:none; border-bottom:1px solid var(--line);
+    background:rgba(255,255,255,.97); color:var(--text-mid); font:600 13px Inter,system-ui,sans-serif; cursor:pointer; }
+  #sheet-close-desktop:hover{ color:var(--text-hi); }
 </style>
 </head>
 <body>
@@ -1608,6 +1642,10 @@ document.querySelectorAll('.nav-btn').forEach(btn=>{
 
 /* ===================== MAP SETUP ===================== */
 const map = L.map('map', { zoomControl:false, attributionControl:true }).setView([46.6, 2.2], 5.4);
+/* Version ordinateur : boutons de zoom, et un clic sur la carte referme le panneau de fiche. */
+const IS_DESKTOP = ()=> window.matchMedia('(min-width:1024px)').matches;
+if(IS_DESKTOP()) L.control.zoom({ position:'topright', zoomInTitle:'Zoomer', zoomOutTitle:'Dézoomer' }).addTo(map);
+map.on('click', ()=>{ if(IS_DESKTOP() && !document.getElementById('move-bar') && document.getElementById('sheet').classList.contains('show')) closeSheet(); });
 
 /* Tuiles OpenStreetMap standard : réseau le plus fiable/universel.
    Si jamais elles ne se chargent pas non plus, on bascule sur CARTO en secours
@@ -2473,6 +2511,7 @@ function openSheet(spotId){
   if(!spot) return;
   currentSpotId = spotId;
   sheetEl.innerHTML = sheetSpotHTML(spot);
+  addSheetClose();
   refreshIcons();
   backdropEl.classList.add('show');
   sheetEl.classList.add('show');
@@ -2524,6 +2563,13 @@ function openSheet(spotId){
   }
 }
 
+function addSheetClose(){
+  const b = document.createElement('button');
+  b.id = 'sheet-close-desktop'; b.type = 'button'; b.setAttribute('aria-label', 'Fermer la fiche');
+  b.innerHTML = 'Fermer <i data-lucide="x" width="16" height="16"></i>';
+  b.addEventListener('click', closeSheet);
+  sheetEl.prepend(b);
+}
 function closeSheet(){
   backdropEl.classList.remove('show');
   sheetEl.classList.remove('show');
@@ -3531,6 +3577,7 @@ function clubSheetHTML(club){
 function openClubFromMap(club){
   currentSpotId = null;
   sheetEl.innerHTML = clubSheetHTML(club);
+  addSheetClose();
   refreshIcons();
   backdropEl.classList.add('show');
   sheetEl.classList.add('show');
