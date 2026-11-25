@@ -1762,17 +1762,19 @@ function ovPatch(x, o){
   if(o.type_surface && x.type_surface !== 'gymnase' && o.type_surface !== 'gymnase') x.type_surface = o.type_surface;
   if(o.latitude != null && o.longitude != null){ x.latitude = o.latitude; x.longitude = o.longitude; x.geo_approx = false; x.geo_level = 0; }
 }
+/* Corbeille : les points retirés restent en mémoire (et en base) pour pouvoir être restaurés. */
+const TRASH = new Map(); /* clé -> { kind:'spot'|'club', obj } */
 function applyMapOverrides(){
   if(!MAP_OV || !Object.keys(MAP_OV).length) return;
   spots = spots.filter(s=>{
     const o = MAP_OV[ovKey(s)];
     if(!o) return true;
-    if(o.hidden) return false;
+    if(o.hidden){ TRASH.set(ovKey(s), { kind:'spot', obj:s }); return false; }
     ovPatch(s, o); return true;
   });
   clubs = clubs.filter(c=>{
     const o = MAP_OV[c.id];
-    if(o && o.hidden){ if(clubsByName[c.name] === c) delete clubsByName[c.name]; return false; }
+    if(o && o.hidden){ if(clubsByName[c.name] === c) delete clubsByName[c.name]; TRASH.set(c.id, { kind:'club', obj:c }); return false; }
     const g = c.geo_key ? MAP_OV['g:' + c.geo_key] : null;
     if(g && !g.hidden && g.latitude != null){ c.latitude = g.latitude; c.longitude = g.longitude; c.geo_approx = false; c.geo_level = 0; }
     if(o) ovPatch(c, o);
@@ -1851,10 +1853,11 @@ function bindAdminBar(kind, target){
   });
   sheetEl.querySelector('[data-adm="hide"]').addEventListener('click', async ()=>{
     const what = isClub ? `le club « ${label} »` : `« ${label} »`;
-    if(!confirm(`Retirer ${what} de la carte ?\nTu pourras l'annuler depuis Profil → Modération.`)) return;
+    if(!confirm(`Mettre ${what} à la corbeille ?\nIl disparaît de la carte. Tu pourras le restaurer depuis Profil → Corbeille.`)) return;
     if(await saveMapOverride({ key: editKey, label, hidden:true })){
       closeSheet(); renderMarkers(); if(typeof updateLandingCounts === 'function') updateLandingCounts();
-      showToast('Point retiré de la carte', 'trash-2');
+      TRASH.set(editKey, { kind: isClub ? 'club' : 'spot', obj: target });
+      showToast('Point mis à la corbeille', 'trash-2');
     }
   });
 }
@@ -1889,12 +1892,45 @@ function startMapMove(key, label, lat, lon, onDone){
   });
 }
 function adminOverridesHTML(){
-  const rows = Object.values(MAP_OV || {}).sort((a,b)=> String(b.updated_at||'').localeCompare(String(a.updated_at||'')));
+  const rows = Object.values(MAP_OV || {}).filter(r=>!r.hidden).sort((a,b)=> String(b.updated_at||'').localeCompare(String(a.updated_at||'')));
   if(!rows.length) return '';
-  const what = r => r.hidden ? 'retiré' : [r.latitude!=null ? 'déplacé' : '', (r.name||r.address||r.city||r.type_surface) ? 'modifié' : ''].filter(Boolean).join(' + ') || 'modifié';
+  const what = r => [r.latitude!=null ? 'déplacé' : '', (r.name||r.address||r.city||r.type_surface) ? 'modifié' : ''].filter(Boolean).join(' + ') || 'modifié';
   return `<div class="filter-section-label" style="padding:12px 0 8px;">Modifications de la carte (${rows.length})</div>` +
     rows.slice(0, 40).map(r=>`<div class="admin-item"><b>${esc(r.name || r.label || r.key)}</b><br><span style="color:var(--text-mid)">${esc(what(r))} · ${esc(String(r.updated_at||'').slice(0,10))}</span>
       <div class="row"><button data-ov-undo="${esc(r.key)}">Annuler cette modification</button></div></div>`).join('');
+}
+async function restoreFromTrash(key){
+  const o = MAP_OV[key] || {};
+  const hasEdits = o.latitude != null || o.name || o.address || o.city || o.type_surface;
+  const res = hasEdits
+    ? await sb.from('map_overrides').update({ hidden:false, updated_at:new Date().toISOString() }).eq('key', key)
+    : await sb.from('map_overrides').delete().eq('key', key);
+  if(res.error){ showToast('Restauration impossible : ' + res.error.message, 'alert-circle'); return; }
+  if(hasEdits) MAP_OV[key] = Object.assign({}, o, { hidden:false }); else delete MAP_OV[key];
+  try{ localStorage.setItem('vs_map_ov', JSON.stringify(MAP_OV)); }catch(e){}
+  const t = TRASH.get(key);
+  if(t){
+    if(t.kind === 'club'){ if(!clubs.includes(t.obj)) clubs.push(t.obj); if(!clubsByName[t.obj.name]) clubsByName[t.obj.name] = t.obj; }
+    else if(!spots.includes(t.obj)) spots.push(t.obj);
+    TRASH.delete(key);
+    renderMarkers(); if(typeof updateLandingCounts === 'function') updateLandingCounts();
+    renderAdminPanel();
+    showToast('Point restauré sur la carte', 'rotate-ccw');
+  }else{
+    showToast('Point restauré, rechargement…', 'rotate-ccw'); setTimeout(()=> location.reload(), 700);
+  }
+}
+function adminTrashHTML(){
+  const rows = Object.values(MAP_OV || {}).filter(r=>r.hidden).sort((a,b)=> String(b.updated_at||'').localeCompare(String(a.updated_at||'')));
+  const kindOf = r => { const t = TRASH.get(r.key); if(t) return t.kind === 'club' ? 'Club' : ((SURFACE_META[t.obj.type_surface]||{}).label || 'Terrain');
+    return String(r.key).startsWith('club_') ? 'Club' : (String(r.key).startsWith('g:') ? 'Gymnase' : 'Terrain'); };
+  const cityOf = r => { const t = TRASH.get(r.key); return t ? (t.obj.city || '') : ''; };
+  return `<details class="admin-trash" style="margin-top:12px;"${rows.length ? '' : ''}>
+    <summary class="filter-section-label" style="padding:4px 0 8px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;"><i data-lucide="trash-2" width="14" height="14"></i> Corbeille (${rows.length})</summary>
+    ${rows.length ? rows.map(r=>`<div class="admin-item"><b>${esc(r.name || r.label || r.key)}</b><br><span style="color:var(--text-mid)">${esc(kindOf(r))}${cityOf(r) ? ' · ' + esc(cityOf(r)) : ''} · supprimé le ${esc(String(r.updated_at||'').slice(0,10).split('-').reverse().join('/'))}</span>
+      <div class="row"><button class="ok" data-trash-restore="${esc(r.key)}">Restaurer</button></div></div>`).join('')
+      : `<div class="profile-note">La corbeille est vide. Les points supprimés de la carte arrivent ici et peuvent être restaurés à tout moment.</div>`}
+  </details>`;
 }
 async function undoMapOverride(key){
   const { error } = await sb.from('map_overrides').delete().eq('key', key);
@@ -3633,7 +3669,9 @@ async function renderAdminPanel(){
     (spotsP||[]).map(s=>`<div class="admin-item"><b>Terrain : ${esc(s.name)}</b><br>${esc(s.city)} · ${esc((SURFACE_META[s.type_surface]||{}).label||s.type_surface)} · <a href="https://www.google.com/maps/search/?api=1&query=${s.latitude},${s.longitude}" target="_blank" rel="noopener">voir la position</a>
       <div class="row"><button data-spot="${s.id}" data-st="rejected">Refuser</button><button class="ok" data-spot="${s.id}" data-st="approved">Publier</button></div></div>`).join('') +
     `<div class="profile-note" style="margin-top:10px;">Pour modifier, déplacer ou supprimer un point : ouvre sa fiche sur la carte, la rubrique « Administration » est en bas.</div>` +
-    adminOverridesHTML();
+    adminOverridesHTML() + adminTrashHTML();
+  refreshIcons();
+  box.querySelectorAll('[data-trash-restore]').forEach(b=>b.addEventListener('click', ()=>{ b.disabled = true; restoreFromTrash(b.dataset.trashRestore); }));
   box.querySelectorAll('[data-ov-undo]').forEach(b=>b.addEventListener('click', ()=>{ if(confirm('Annuler cette modification et rétablir le point d’origine ?')) undoMapOverride(b.dataset.ovUndo); }));
   box.querySelectorAll('[data-claim]').forEach(b=>b.addEventListener('click', async ()=>{ await sb.from('club_claims').update({ status:b.dataset.st }).eq('id', b.dataset.claim); showToast(b.dataset.st==='approved'?'Demande validée':'Demande refusée','check-circle'); renderAdminPanel(); }));
   box.querySelectorAll('[data-spot]').forEach(b=>b.addEventListener('click', async ()=>{ await sb.from('user_spots').update({ status:b.dataset.st }).eq('id', b.dataset.spot); showToast(b.dataset.st==='approved'?'Terrain publié':'Terrain refusé','check-circle'); renderAdminPanel(); if(b.dataset.st==='approved') loadUserSpots(); }));
