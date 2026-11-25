@@ -627,6 +627,49 @@
     align-items:center; justify-content:flex-end; gap:6px; padding:0 16px; border:none; border-bottom:1px solid var(--line);
     background:rgba(255,255,255,.97); color:var(--text-mid); font:600 13px Inter,system-ui,sans-serif; cursor:pointer; }
   #sheet-close-desktop:hover{ color:var(--text-hi); }
+
+  /* ===================== ACCUEIL V2 (essai, ?accueil=2) ===================== */
+  #home-v2{ position:absolute; inset:0; z-index:1001; background:#E9EDF0; overflow-y:auto; display:none; -webkit-overflow-scrolling:touch; }
+  #home-v2.show{ display:block; }
+  .home-hero{ position:relative; height:250px; overflow:hidden; clip-path:polygon(0 0,100% 0,100% 100%,0 86%); }
+  .home-hero-art{ position:absolute; inset:0; width:100%; height:100%; }
+  .home-hero-shade{ position:absolute; inset:0; background:linear-gradient(180deg,rgba(0,0,0,.05) 30%,rgba(0,0,0,.28)); }
+  .home-hello{ position:absolute; left:22px; right:22px; bottom:58px; color:#fff; font:800 36px/1.05 'Archivo',sans-serif; text-shadow:0 2px 14px rgba(0,0,0,.35); letter-spacing:-.01em; }
+  .home-id{ display:flex; align-items:center; gap:16px; padding:0 18px; margin-top:-6px; }
+  .home-logo{ width:104px; height:104px; flex:none; border-radius:22px; box-shadow:0 10px 26px rgba(24,43,46,.22); }
+  .home-id-txt{ flex:1; min-width:0; }
+  .home-name{ font:800 26px/1.1 'Archivo',sans-serif; color:#182B2E; } .home-name span{ color:var(--accent); }
+  .home-tag{ color:var(--text-mid); font-size:13.5px; margin-top:4px; }
+  .home-info{ width:40px; height:40px; flex:none; border-radius:50%; border:none; background:#1E3550; color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .home-rounds{ display:flex; gap:14px; overflow-x:auto; padding:22px 18px 6px; scrollbar-width:none; }
+  .home-rounds::-webkit-scrollbar{ display:none; }
+  .home-round{ flex:none; width:78px; background:none; border:none; padding:0; display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; color:#182B2E; }
+  .home-round .ring{ width:72px; height:72px; border-radius:50%; border:2.5px solid #1E3550; display:flex; align-items:center; justify-content:center; background:#fff; }
+  .home-round .disc{ width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:26px; }
+  .home-round .lbl{ font-weight:600; font-size:14px; }
+  .home-round:active .ring{ transform:scale(.94); }
+  .home-sec-title{ font:800 24px/1.15 'Archivo',sans-serif; color:#182B2E; padding:26px 18px 12px; }
+  .home-tabs{ display:flex; gap:10px; overflow-x:auto; padding:0 18px 4px; scrollbar-width:none; }
+  .home-tabs::-webkit-scrollbar{ display:none; }
+  .home-tab{ flex:none; display:flex; align-items:center; gap:8px; padding:11px 16px; border-radius:99px; border:none; background:#D8DEE3; color:#1E3550; font-weight:600; font-size:15px; cursor:pointer; }
+  .home-tab .n{ background:rgba(30,53,80,.14); border-radius:99px; padding:1px 9px; font-size:13px; }
+  .home-tab.active{ background:#fff; box-shadow:0 4px 14px rgba(24,43,46,.1); }
+  .home-fav-list{ padding:14px 18px 0; display:flex; flex-direction:column; gap:12px; }
+  .home-fav{ background:#fff; border-radius:18px; padding:14px; box-shadow:0 4px 14px rgba(24,43,46,.06); }
+  .home-fav-top{ display:flex; align-items:center; gap:12px; cursor:pointer; }
+  .home-fav-emoji{ width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; flex:none; }
+  .home-fav-name{ font-weight:700; color:#182B2E; line-height:1.25; }
+  .home-fav-sub{ color:var(--text-mid); font-size:13px; margin-top:2px; }
+  .home-fav-actions{ display:flex; gap:8px; margin-top:12px; }
+  .home-fav-actions a, .home-fav-actions button{ flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:10px 8px; border-radius:12px; font-weight:600; font-size:13.5px; text-decoration:none; border:1px solid var(--line); background:var(--bg-card-hi); color:#182B2E; cursor:pointer; }
+  .home-fav-actions .main{ background:#1E3550; color:#fff; border-color:#1E3550; }
+  .home-empty{ background:#fff; border-radius:18px; padding:22px 18px; text-align:center; color:var(--text-mid); font-size:14px; }
+  .home-empty b{ display:block; color:#182B2E; font-size:16px; margin-bottom:6px; }
+  @media (min-width:1024px){
+    #home-v2{ background:rgba(233,237,240,.86); backdrop-filter:blur(6px); }
+    #home-v2 > *{ max-width:560px; margin-left:auto; margin-right:auto; }
+    .home-hero{ border-radius:0 0 28px 28px; }
+  }
 </style>
 </head>
 <body>
@@ -667,6 +710,58 @@
     </div>
   </div>
 
+
+  <!-- ===================== ACCUEIL V2 (essai) ===================== -->
+  <div id="home-v2" aria-label="Accueil">
+    <div class="home-hero">
+      <svg class="home-hero-art" viewBox="0 0 400 250" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <defs>
+    <linearGradient id="hSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1E3D45"/><stop offset=".55" stop-color="#C8573F"/><stop offset="1" stop-color="#F2A65A"/></linearGradient>
+    <linearGradient id="hSea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2E6F73"/><stop offset="1" stop-color="#1B4E55"/></linearGradient>
+    <linearGradient id="hSand" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E9C98F"/><stop offset="1" stop-color="#D7AE6C"/></linearGradient>
+    <radialGradient id="hSun" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFE3A3"/><stop offset=".6" stop-color="#FFC56E"/><stop offset="1" stop-color="#FFC56E" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#hSky)"/>
+  <circle cx="300" cy="138" r="70" fill="url(#hSun)"/>
+  <circle cx="300" cy="140" r="30" fill="#FFD98C"/>
+  <rect y="150" width="400" height="34" fill="url(#hSea)"/>
+  <path d="M0 160 Q50 156 100 160 T200 160 T300 160 T400 160" stroke="#9FD0CF" stroke-opacity=".35" fill="none"/>
+  <path d="M0 180 Q120 168 230 176 T400 172 V250 H0Z" fill="url(#hSand)"/>
+  <g stroke="#2B2B2B" stroke-linecap="round">
+    <line x1="92" y1="124" x2="92" y2="214" stroke-width="3.5"/>
+    <line x1="252" y1="118" x2="252" y2="206" stroke-width="3.5"/>
+  </g>
+  <path d="M92 128 L252 122 L252 146 L92 152Z" fill="#fff" fill-opacity=".18" stroke="#fff" stroke-opacity=".9" stroke-width="1.5"/>
+  <g stroke="#fff" stroke-opacity=".55" stroke-width=".8">
+    <line x1="112" y1="127" x2="112" y2="151"/><line x1="132" y1="126" x2="132" y2="150"/><line x1="152" y1="126" x2="152" y2="149"/><line x1="172" y1="125" x2="172" y2="148"/><line x1="192" y1="124" x2="192" y2="148"/><line x1="212" y1="124" x2="212" y2="147"/><line x1="232" y1="123" x2="232" y2="146"/>
+    <line x1="92" y1="140" x2="252" y2="134"/>
+  </g>
+  <g transform="translate(176 72)">
+    <circle r="15" fill="#FBF7EE"/>
+    <path d="M-15 0 A15 15 0 0 1 6 -14 M-8 13 A15 15 0 0 1 -5 -14 M15 2 A15 15 0 0 1 -10 11" stroke="#D2432F" stroke-width="2.2" fill="none"/>
+  </g>
+  <ellipse cx="176" cy="210" rx="16" ry="3" fill="#000" fill-opacity=".12"/>
+</svg>
+      <div class="home-hero-shade"></div>
+      <div class="home-hello" id="home-hello">Bonjour !</div>
+    </div>
+    <div class="home-id">
+      <div class="home-logo"><div class="brand-mark" style="width:100%;height:100%;font-size:52px;border-radius:22px;">🏐</div></div>
+      <div class="home-id-txt"><div class="home-name">Volley<span>Spot</span></div><div class="home-tag">Clubs et terrains près de chez toi</div></div>
+      <button class="home-info" id="home-info" aria-label="À propos de VolleySpot"><i data-lucide="info" width="20" height="20"></i></button>
+    </div>
+    <div class="home-rounds" role="list">
+      <button class="home-round" data-home="club" role="listitem"><span class="ring"><span class="disc" style="background:#D2432F">🏐</span></span><span class="lbl">Clubs</span></button>
+      <button class="home-round" data-home="sable" role="listitem"><span class="ring"><span class="disc" style="background:#C98A3A">🏖️</span></span><span class="lbl">Beach</span></button>
+      <button class="home-round" data-home="herbe" role="listitem"><span class="ring"><span class="disc" style="background:#1B8A7E">🌿</span></span><span class="lbl">Green</span></button>
+      <button class="home-round" data-home="bitume" role="listitem"><span class="ring"><span class="disc" style="background:#7C5CD6">🏙️</span></span><span class="lbl">Street</span></button>
+      <button class="home-round" data-home="tous" role="listitem"><span class="ring"><span class="disc" style="background:#182B2E">🗺️</span></span><span class="lbl">Carte</span></button>
+    </div>
+    <div class="home-sec-title">Mes clubs &amp; lieux favoris</div>
+    <div class="home-tabs" id="home-tabs" role="tablist"></div>
+    <div class="home-fav-list" id="home-fav-list"></div>
+    <div style="height:30px"></div>
+  </div>
   <!-- ===================== MAP VIEW ===================== -->
   <div class="view active" id="view-map">
     <div id="map"></div>
@@ -1543,8 +1638,10 @@ async function loadFavorites(){
       favorites = new Set(JSON.parse(res.value));
     }
   }catch(e){ /* rien de sauvegardé encore */ }
+  if(typeof renderHome === 'function') try{ renderHome(); }catch(e){}
 }
 async function saveFavorites(){
+  if(typeof renderHome === 'function') try{ renderHome(); }catch(e){}
   try{ await window.storage.set(FAVORITES_KEY, JSON.stringify([...favorites]), false); }catch(e){}
 }
 
@@ -3942,6 +4039,7 @@ function renderFavorites(){
 
 /* ===================== PROFILE VIEW ===================== */
 function renderProfileStats(){
+  if(typeof renderHome === 'function') try{ renderHome(); }catch(e){}
   document.getElementById('stat-checkins').textContent = userCheckinsCount;
   document.getElementById('stat-favs').textContent = favorites.size;
   document.getElementById('stat-added').textContent = addedSpotsCount;
@@ -4133,6 +4231,7 @@ function updateLandingCounts(){
     if(!el){ el = document.createElement('div'); el.className = 'landing-count'; card.appendChild(el); }
     el.textContent = k==='club' ? `${n} clubs` : (n ? `${n} terrain${n>1?'s':''}` : 'chargement…');
   });
+  if(typeof renderHome === 'function') try{ renderHome(); }catch(e){}
 }
 updateLandingCounts();
 
@@ -4282,6 +4381,77 @@ document.querySelectorAll('.landing-card').forEach(card=>{
     }
   });
 });
+
+
+/* ===================== ACCUEIL V2 (essai) =====================
+   Activé par le lien ?accueil=2 (mémorisé sur l'appareil) ; ?accueil=1 revient à l'ancien. */
+const HOME_V2 = (()=>{
+  const q = new URLSearchParams(location.search).get('accueil');
+  try{ if(q==='2') localStorage.setItem('vs_home_v2','1'); if(q==='1') localStorage.removeItem('vs_home_v2'); return localStorage.getItem('vs_home_v2')==='1'; }
+  catch(e){ return q==='2'; }
+})();
+let homeTab = 'club';
+const HOME_TABS = [
+  { k:'club', label:'Clubs favoris', emoji:'🏐', color:'#D2432F' },
+  { k:'sable', label:'Beach favoris', emoji:'🏖️', color:'#C98A3A' },
+  { k:'herbe', label:'Green favoris', emoji:'🌿', color:'#1B8A7E' },
+  { k:'bitume', label:'Street favoris', emoji:'🏙️', color:'#7C5CD6' },
+  { k:'gymnase', label:'Gymnases favoris', emoji:'🏢', color:'#1E3550' }
+];
+function homeFavs(k){
+  if(k==='club') return clubs.filter(c=>favorites.has(c.id));
+  return spots.filter(s=>s.type_surface===k && favorites.has(s.id));
+}
+function renderHome(){
+  const box = document.getElementById('home-v2'); if(!box || !HOME_V2) return;
+  const first = myProfile && myProfile.name ? String(myProfile.name).split(' ')[0] : '';
+  document.getElementById('home-hello').textContent = first ? `Bonjour ${first}` : 'Bonjour !';
+  const tabs = HOME_TABS.filter(t=> t.k==='club' || t.k===homeTab || homeFavs(t.k).length);
+  document.getElementById('home-tabs').innerHTML = tabs.map(t=>`<button class="home-tab ${t.k===homeTab?'active':''}" role="tab" aria-selected="${t.k===homeTab}" data-tab="${t.k}">${t.label}<span class="n">${homeFavs(t.k).length}</span></button>`).join('');
+  document.querySelectorAll('#home-tabs .home-tab').forEach(b=> b.addEventListener('click', ()=>{ homeTab = b.dataset.tab; renderHome(); }));
+  const meta = HOME_TABS.find(t=>t.k===homeTab) || HOME_TABS[0];
+  const list = homeFavs(homeTab);
+  const el = document.getElementById('home-fav-list');
+  if(!list.length){
+    el.innerHTML = `<div class="home-empty"><b>${homeTab==='club' ? 'Aucun club favori pour l’instant' : 'Aucun lieu favori ici'}</b>
+      ${homeTab==='club' ? 'Ouvre la fiche de ton club et touche l’étoile ☆ : tu retrouveras ici ses matchs et ses classements en un clic.' : 'Ouvre un terrain sur la carte et touche l’étoile ☆ pour le garder ici.'}
+      <div class="home-fav-actions" style="margin-top:14px;"><button class="main" data-home-go="${homeTab==='club'?'club':homeTab}">${homeTab==='club' ? 'Trouver mon club' : 'Voir les terrains'}</button></div></div>`;
+  }else if(homeTab==='club'){
+    el.innerHTML = list.map(c=>`<div class="home-fav">
+      <div class="home-fav-top" data-open-club="${esc(c.id)}">${clubBadgeHTML(c, 44)}<div style="min-width:0"><div class="home-fav-name">${esc(c.name)}</div><div class="home-fav-sub">${esc(c.city||'')}${c.dep ? ' · Dép. '+esc(c.dep) : ''}</div></div></div>
+      <div class="home-fav-actions">
+        <a class="main" href="${ffvResultsUrl(c.id, true)}" target="_blank" rel="noopener"><i data-lucide="list-ordered" width="15" height="15"></i> Classements</a>
+        <a href="${ffvResultsUrl(c.id, false)}" target="_blank" rel="noopener"><i data-lucide="calendar-days" width="15" height="15"></i> Matchs</a>
+        <button data-open-club="${esc(c.id)}"><i data-lucide="map-pin" width="15" height="15"></i> Fiche</button>
+      </div></div>`).join('');
+  }else{
+    el.innerHTML = list.map(s=>`<div class="home-fav">
+      <div class="home-fav-top" data-open-spot="${esc(s.id)}"><div class="home-fav-emoji" style="background:${meta.color}22">${meta.emoji}</div><div style="min-width:0"><div class="home-fav-name">${esc(s.name)}</div><div class="home-fav-sub">${esc(s.city||'')}</div></div></div>
+      <div class="home-fav-actions">
+        <button class="main" data-open-spot="${esc(s.id)}"><i data-lucide="map-pin" width="15" height="15"></i> Voir le terrain</button>
+        <a href="https://www.google.com/maps/dir/?api=1&destination=${s.latitude},${s.longitude}" target="_blank" rel="noopener"><i data-lucide="navigation" width="15" height="15"></i> Itinéraire</a>
+      </div></div>`).join('');
+  }
+  el.querySelectorAll('[data-open-club]').forEach(b=> b.addEventListener('click', ()=>{ const c = clubs.find(x=>x.id===b.dataset.openClub); if(!c) return; hideHome(); hideLandingScreen(); switchView('map'); map.setView([c.latitude, c.longitude], 15); openClubFromMap(c); }));
+  el.querySelectorAll('[data-open-spot]').forEach(b=> b.addEventListener('click', ()=>{ const sp = spots.find(x=>x.id===b.dataset.openSpot); if(!sp) return; hideHome(); hideLandingScreen(); switchView('map'); map.setView([sp.latitude, sp.longitude], 15); openSheet(sp.id); }));
+  el.querySelectorAll('[data-home-go]').forEach(b=> b.addEventListener('click', ()=> homeGo(b.dataset.homeGo)));
+  refreshIcons();
+}
+function showHome(){ if(!HOME_V2) return; closeSheet(); renderHome(); document.getElementById('home-v2').classList.add('show'); document.getElementById('home-v2').scrollTop = 0; }
+function hideHome(){ const h = document.getElementById('home-v2'); if(h) h.classList.remove('show'); }
+function homeGo(choice){
+  hideHome(); hideLandingScreen();
+  if(choice === 'club'){ switchView('clubs'); sortClubsNear(true); }
+  else applyCategoryFilter(choice === 'gymnase' ? 'tous' : choice);
+}
+if(HOME_V2){
+  document.querySelectorAll('.home-round').forEach(b=> b.addEventListener('click', ()=> homeGo(b.dataset.home)));
+  document.getElementById('home-info').addEventListener('click', ()=> openLegal('about'));
+  /* Le logo VolleySpot en haut de la carte ramène à l'accueil. */
+  const brand = document.querySelector('.map-topbar .brand');
+  if(brand){ brand.style.cursor = 'pointer'; brand.setAttribute('role','button'); brand.setAttribute('aria-label','Retour à l’accueil'); brand.addEventListener('click', showHome); }
+  if(!new URLSearchParams(location.search).get('club')){ hideLandingScreen(); showHome(); }
+}
 
 /* Lien direct vers un club : ?club=0279428 (utilisé par les pages club et le partage). */
 function clubSlug(c){ return (norm(c.name).replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,70) || 'club') + '-' + rawClubId(c); }
