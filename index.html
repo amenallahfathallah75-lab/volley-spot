@@ -633,6 +633,11 @@
   #home-v2.show{ display:block; }
   .home-hero{ position:relative; height:250px; overflow:hidden; clip-path:polygon(0 0,100% 0,100% 100%,0 86%); }
   .home-hero-art{ position:absolute; inset:0; width:100%; height:100%; }
+  .home-account{ position:absolute; top:calc(14px + env(safe-area-inset-top)); right:16px; width:46px; height:46px; border-radius:50%; z-index:2;
+    border:2px solid rgba(255,255,255,.85); background:rgba(255,255,255,.22); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+    color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.2);
+    font:800 19px 'Archivo',sans-serif; }
+  .home-account.on{ background:#fff; color:var(--accent); border-color:#fff; }
   .home-hero-shade{ position:absolute; inset:0; background:linear-gradient(180deg,rgba(0,0,0,.05) 30%,rgba(0,0,0,.28)); }
   .home-hello{ position:absolute; left:22px; right:22px; bottom:58px; color:#fff; font:800 36px/1.05 'Archivo',sans-serif; text-shadow:0 2px 14px rgba(0,0,0,.35); letter-spacing:-.01em; }
   .home-id{ display:flex; align-items:center; gap:16px; padding:0 18px; margin-top:-6px; }
@@ -744,6 +749,7 @@
 </svg>
       <div class="home-hero-shade"></div>
       <div class="home-hello" id="home-hello">Bonjour !</div>
+      <button class="home-account" id="home-account" aria-label="Mon compte"><i data-lucide="user" width="22" height="22"></i></button>
     </div>
     <div class="home-id">
       <div class="home-logo"><div class="brand-mark" style="width:100%;height:100%;font-size:52px;border-radius:22px;">🏐</div></div>
@@ -4406,6 +4412,13 @@ function renderHome(){
   const box = document.getElementById('home-v2'); if(!box || !HOME_V2) return;
   const first = myProfile && myProfile.name ? String(myProfile.name).split(' ')[0] : '';
   document.getElementById('home-hello').textContent = first ? `Bonjour ${first}` : 'Bonjour !';
+  const acc = document.getElementById('home-account');
+  if(acc){
+    acc.classList.toggle('on', !!first);
+    acc.setAttribute('aria-label', first ? `Mon compte (${first})` : 'Se connecter');
+    if(first) acc.textContent = first.charAt(0).toUpperCase();
+    else if(!acc.querySelector('svg, i')) acc.innerHTML = '<i data-lucide="user" width="22" height="22"></i>';
+  }
   const tabs = HOME_TABS.filter(t=> t.k==='club' || t.k===homeTab || homeFavs(t.k).length);
   document.getElementById('home-tabs').innerHTML = tabs.map(t=>`<button class="home-tab ${t.k===homeTab?'active':''}" role="tab" aria-selected="${t.k===homeTab}" data-tab="${t.k}">${t.label}<span class="n">${homeFavs(t.k).length}</span></button>`).join('');
   document.querySelectorAll('#home-tabs .home-tab').forEach(b=> b.addEventListener('click', ()=>{ homeTab = b.dataset.tab; renderHome(); }));
@@ -4447,6 +4460,10 @@ function homeGo(choice){
 if(HOME_V2){
   document.querySelectorAll('.home-round').forEach(b=> b.addEventListener('click', ()=> homeGo(b.dataset.home)));
   document.getElementById('home-info').addEventListener('click', ()=> openLegal('about'));
+  document.getElementById('home-account').addEventListener('click', ()=>{
+    hideHome(); hideLandingScreen(); switchView('profile');
+    if(!myProfile && typeof openProfileModal === 'function') setTimeout(()=> openProfileModal(), 250);
+  });
   /* Le logo VolleySpot en haut de la carte ramène à l'accueil. */
   const brand = document.querySelector('.map-topbar .brand');
   if(brand){ brand.style.cursor = 'pointer'; brand.setAttribute('role','button'); brand.setAttribute('aria-label','Retour à l’accueil'); brand.addEventListener('click', showHome); }
