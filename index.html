@@ -10,8 +10,7 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="description" content="Clubs FFVolley, gymnases et terrains de beach, green et street volley partout en France." />
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=Fraunces:ital,opsz,wght@0,9..144,500;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
 <link rel="stylesheet" href="vendor/markercluster/MarkerCluster.css" />
 <link rel="stylesheet" href="vendor/markercluster/MarkerCluster.Default.css" />
@@ -763,6 +762,7 @@
       </div>
       <div id="admin-panel"></div>
       <div class="settings-item" id="open-legal" style="cursor:pointer;"><div class="left"><i data-lucide="shield" width="17" height="17"></i> Confidentialité & mentions légales</div><i data-lucide="chevron-right" width="17" height="17" style="color:var(--text-low)"></i></div>
+      <div class="settings-item" id="open-cgu" style="cursor:pointer;"><div class="left"><i data-lucide="file-text" width="17" height="17"></i> Conditions d'utilisation</div><i data-lucide="chevron-right" width="17" height="17" style="color:var(--text-low)"></i></div>
       <a class="settings-item" id="open-support" style="text-decoration:none;"><div class="left"><i data-lucide="help-circle" width="17" height="17"></i> Aide & signalement</div><i data-lucide="chevron-right" width="17" height="17" style="color:var(--text-low)"></i></a>
       <div class="settings-item" id="open-about" style="border-bottom:none;cursor:pointer;"><div class="left"><i data-lucide="info" width="17" height="17"></i> À propos de VolleySpot</div><i data-lucide="chevron-right" width="17" height="17" style="color:var(--text-low)"></i></div>
     </div>
@@ -806,6 +806,10 @@
         <label class="form-label">Email</label>
         <input class="form-input" id="profile-email-input" type="email" placeholder="toi@exemple.com" maxlength="80">
       </div>
+      <label id="profile-consent-row" style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--text-mid);margin:4px 0 10px;cursor:pointer;">
+        <input type="checkbox" id="profile-consent" style="margin-top:2px;flex:none;">
+        <span>J'ai au moins 15 ans et j'accepte les <a href="#" id="profile-cgu-link">conditions d'utilisation</a> et la <a href="#" id="profile-privacy-link">politique de confidentialité</a>.</span>
+      </label>
       <div id="profile-modal-error"></div>
       <button class="submit-btn" id="profile-modal-save"><i data-lucide="check" width="16" height="16"></i> Valider</button>
     </div>
@@ -2297,6 +2301,8 @@ function openProfileModal(onSuccess){
   document.getElementById('profile-name-input').value = myProfile ? myProfile.name : '';
   document.getElementById('profile-email-input').value = myProfile ? myProfile.email : '';
   document.getElementById('profile-modal-error').textContent = '';
+  document.getElementById('profile-consent').checked = !!myProfile;
+  document.getElementById('profile-consent-row').style.display = myProfile ? 'none' : 'flex';
   document.getElementById('profile-modal-backdrop').classList.add('show');
 }
 function closeProfileModal(){
@@ -2337,6 +2343,7 @@ async function saveProfileForm(){
   const errEl = document.getElementById('profile-modal-error');
   if(!name){ errEl.textContent = 'Merci d\'indiquer un prénom.'; return; }
   if(!isValidEmail(email)){ errEl.textContent = 'Adresse email invalide.'; return; }
+  if(!myProfile && !document.getElementById('profile-consent').checked){ errEl.textContent = 'Merci de confirmer que tu as au moins 15 ans et que tu acceptes les conditions d\'utilisation.'; return; }
   if(SB_ON){
     if(myProfile && myProfile.email === email){
       await sb.from('profiles').update({ display_name:name }).eq('id', myProfile.id);
@@ -2658,7 +2665,7 @@ function renderChatMessages(messages){
       <div class="chat-msg ${mine?'chat-msg-mine':''}">
         <div class="chat-msg-name">${mine ? 'Toi' : esc(m.name)}</div>
         <div class="chat-msg-bubble">${esc(m.text)}</div>
-        <div class="chat-msg-time">${chatTimeLabel(m.ts)}</div>
+        <div class="chat-msg-time">${chatTimeLabel(m.ts)}${(!mine && m.id) ? ` · <a class="chat-report" href="${contactLink('Signalement message #' + m.id + ' — ' + (currentChatSpot ? currentChatSpot.name : ''))}" style="color:inherit;">Signaler</a>` : ''}</div>
       </div>`;
   }).join('');
   if(wasNearBottom) box.scrollTop = box.scrollHeight;
@@ -3502,7 +3509,20 @@ document.getElementById('account-delete').addEventListener('click', ()=>{
 function openLegal(kind){
   const t = document.getElementById('legal-text');
   const mail = `<a href="${contactLink('VolleySpot — demande')}">${esc(CONTACT_EMAIL)}</a>`;
-  if(kind === 'about'){
+  if(kind === 'cgu'){
+    document.getElementById('legal-title').textContent = "Conditions d'utilisation";
+    t.innerHTML = `<p><b>1. Objet</b> — VolleySpot est un service gratuit qui aide à trouver des clubs de volley et des terrains, à signaler sa présence sur un terrain, à organiser des sessions et à échanger avec d’autres joueurs. Utiliser VolleySpot vaut acceptation des présentes conditions.</p>
+      <p><b>2. Accès et âge minimum</b> — La consultation est libre. La création d’un compte est réservée aux personnes âgées d’au moins 15 ans.</p>
+      <p><b>3. Compte</b> — Tu t’engages à fournir une adresse e-mail qui t’appartient et un prénom ou pseudo qui n’usurpe l’identité de personne. Tu peux supprimer ton compte à tout moment depuis Profil.</p>
+      <p><b>4. Règles de conduite</b> — Il est interdit de publier des contenus illicites, haineux, discriminatoires, violents, à caractère sexuel, du harcèlement ou des insultes, des informations personnelles sur autrui, de la publicité ou du spam, ou de fausses informations sur des terrains ou des clubs.</p>
+      <p><b>5. Rencontres et pratique sportive</b> — VolleySpot n’organise pas les sessions et n’en contrôle pas les participants. Retrouve-toi dans des lieux publics et reste prudent ; les mineurs doivent être accompagnés ou avoir l’accord de leurs parents. La pratique sportive se fait sous ta responsabilité ; l’état et l’accès des terrains ne sont pas garantis.</p>
+      <p><b>6. Tes contenus</b> — Tu es responsable de ce que tu publies. Tu autorises VolleySpot à l’afficher dans l’application pendant sa durée de conservation (voir Confidentialité).</p>
+      <p><b>7. Signalement et modération</b> — Tout contenu peut être signalé avec le lien « Signaler » sous chaque message, ou par e-mail à ${mail}, en indiquant le contenu concerné et la raison du signalement. Les signalements sont examinés rapidement. Un contenu illicite ou contraire à ces règles peut être retiré, et un compte suspendu ou supprimé en cas de manquement. L’auteur est informé de la décision et de son motif, et peut la contester par e-mail.</p>
+      <p><b>8. Fiches des clubs</b> — Les informations proviennent de sources publiques ou des clubs eux-mêmes et sont données à titre indicatif. Un club qui gère sa fiche est responsable des informations qu’il y publie. Toute erreur peut être signalée à ${mail}.</p>
+      <p><b>9. Responsabilité</b> — Le service est fourni gratuitement, en l’état, sans garantie de disponibilité ni d’exactitude des informations.</p>
+      <p><b>10. Modifications et droit applicable</b> — Ces conditions peuvent évoluer ; la version en vigueur est toujours accessible dans l’application. Elles sont soumises au droit français.</p>
+      <p style="color:var(--text-low)">Dernière mise à jour : 25 novembre 2026.</p>`;
+  }else if(kind === 'about'){
     document.getElementById('legal-title').textContent = 'À propos de VolleySpot';
     t.innerHTML = `<p>VolleySpot aide à trouver un club de volley FFVolley près de chez soi, et des terrains de beach, green et street volley.</p>
       <p><b>${clubs.length} clubs</b> et <b>${spots.filter(s=>s.type_surface==='gymnase').length} gymnases</b> sont référencés à partir de l'annuaire public de la FFVolley. Les positions des gymnases ont été calculées avec la Géoplateforme de l'IGN ; certaines sont approximatives (signalé sur la fiche).</p>
@@ -3511,22 +3531,27 @@ function openLegal(kind){
       <p>Contact : ${mail}</p>`;
   }else{
     document.getElementById('legal-title').textContent = 'Confidentialité & mentions légales';
-    t.innerHTML = `<p><b>Éditeur</b> — VolleySpot, projet indépendant. Contact : ${mail}.</p>
-      <p><b>Source des données clubs</b> — Annuaire public des clubs de la FFVolley (coordonnées des correspondants publiées par la fédération). VolleySpot ne revend ni n'exploite ces données à d'autres fins que la mise en relation avec les clubs.</p>
+    t.innerHTML = `<p><b>Éditeur</b> — VolleySpot est édité par un particulier, à titre non professionnel, qui a choisi de ne pas rendre publique son identité, comme le permet l’article 6, III, 2 de la loi n° 2004-575 du 21 juin 2004 pour la confiance dans l’économie numérique (LCEN). Ses éléments d’identification ont été communiqués à l’hébergeur. Directeur de la publication : l’éditeur. Contact : ${mail}.</p>
+      <p><b>Hébergeur du site</b> — GitHub, Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, États-Unis — +1 877 448 4820 — github.com.</p>
+      <p><b>Propriété intellectuelle</b> — Les noms et logos des clubs appartiennent à leurs clubs respectifs et sont affichés à titre d’identification. Tout club peut en demander le retrait à ${mail}. VolleySpot est un projet indépendant, non affilié à la FFVolley.</p>
+      <p><b>Source des données clubs</b> — Annuaire public des clubs de la FFVolley (coordonnées des correspondants publiées par la fédération). VolleySpot n’exploite ces données qu’à des fins de mise en relation avec les clubs.</p>
       <p><b>Droit de rectification et de retrait</b> — Tout club ou correspondant peut demander la correction ou la suppression de ses informations en écrivant à ${mail} (lien également présent sur chaque fiche club). Les demandes sont traitées sous 30 jours.</p>
-      <p><b>Sans compte</b> — Tes favoris restent uniquement sur ton appareil. Aucun cookie publicitaire, aucun outil de suivi.</p>
-      <p><b>Avec un compte</b> — Nous enregistrons ton adresse email (pour la connexion, jamais affichée), ton prénom ou pseudo (visible des autres joueurs), et ce que tu publies : check-ins, sessions et inscriptions, messages du chat, terrains proposés, demandes de gestion de club et infos de fiche club. Base légale : l’exécution du service que tu demandes en créant un compte.</p>
-      <p><b>Hébergement</b> — Comptes et contenus : Supabase, serveurs situés en Union européenne (Francfort). Site : GitHub Pages. Aucune donnée n’est vendue ni utilisée à des fins publicitaires.</p>
+      <p><b>Sans compte</b> — Tes favoris restent uniquement sur ton appareil. Aucun cookie publicitaire, aucun outil de suivi, aucune mesure d’audience.</p>
+      <p><b>Avec un compte</b> — Nous enregistrons ton adresse e-mail (pour la connexion, jamais affichée), ton prénom ou pseudo (visible des autres joueurs), et ce que tu publies : check-ins, sessions et inscriptions, messages du chat, terrains proposés, demandes de gestion de club et infos de fiche club. Base légale : l’exécution du service que tu demandes en créant un compte (art. 6.1.b du RGPD). Le service est réservé aux personnes d’au moins 15 ans.</p>
+      <p><b>Destinataires et sous-traitants</b> — Supabase, Inc. : comptes et contenus, serveurs situés dans l’Union européenne (Francfort). Resend : envoi des e-mails de connexion, région Union européenne. GitHub, Inc. : hébergement du site. Ces prestataires étant des sociétés américaines, un accès depuis les États-Unis ne peut être exclu ; il est encadré par les clauses contractuelles types de la Commission européenne et, le cas échéant, le Data Privacy Framework UE–États-Unis. Aucune donnée n’est vendue ni utilisée à des fins publicitaires.</p>
       <p><b>Durée de conservation</b> — Les check-ins sont effacés automatiquement après 30 jours, les sessions 30 jours après leur date, les messages du chat après 90 jours. Le reste (profil, terrains proposés, fiches club) est conservé tant que ton compte existe, puis effacé immédiatement à sa suppression.</p>
-      <p><b>Tes droits</b> — Accès, rectification, effacement, portabilité, opposition : bouton « Supprimer mon compte » dans Profil, ou écris à ${mail}. Tu peux aussi saisir la CNIL (cnil.fr).</p>
-      <p><b>Terrains extérieurs</b> — Recensement des équipements sportifs (Data ES, ministère des Sports), sous Licence Ouverte 2.0.</p>
-      <p><b>Services tiers</b> — Fond de carte © OpenStreetMap / CARTO, météo Open-Meteo, adresses IGN Géoplateforme, équipements sportifs Data ES. Ces services reçoivent votre adresse IP lors de leur chargement.</p>`;
+      <p><b>Tes droits</b> — Accès, rectification, effacement, portabilité, limitation, opposition : bouton « Supprimer mon compte » dans Profil, ou écris à ${mail}. Réponse sous un mois. Tu peux aussi adresser une réclamation à la CNIL (cnil.fr).</p>
+      <p><b>Services tiers</b> — Fond de carte © OpenStreetMap / CARTO, météo Open-Meteo, adresses IGN Géoplateforme, équipements sportifs Data ES (ministère des Sports, Licence Ouverte 2.0). Ces services reçoivent ton adresse IP lors de leur chargement. Les polices de caractères sont hébergées sur le site lui-même (aucune requête vers Google).</p>
+      <p style="color:var(--text-low)">Dernière mise à jour : 25 novembre 2026.</p>`;
   }
   document.getElementById('legal-backdrop').classList.add('show');
   refreshIcons();
 }
 document.getElementById('open-legal').addEventListener('click', ()=> openLegal('legal'));
 document.getElementById('open-about').addEventListener('click', ()=> openLegal('about'));
+document.getElementById('open-cgu').addEventListener('click', ()=> openLegal('cgu'));
+document.getElementById('profile-cgu-link').addEventListener('click', (e)=>{ e.preventDefault(); openLegal('cgu'); });
+document.getElementById('profile-privacy-link').addEventListener('click', (e)=>{ e.preventDefault(); openLegal('legal'); });
 document.getElementById('open-support').setAttribute('href', contactLink('VolleySpot — aide / signalement'));
 document.getElementById('legal-close').addEventListener('click', ()=> document.getElementById('legal-backdrop').classList.remove('show'));
 document.getElementById('legal-backdrop').addEventListener('click', (e)=>{ if(e.target.id==='legal-backdrop') e.currentTarget.classList.remove('show'); });

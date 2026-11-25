@@ -1,9 +1,10 @@
 /* VolleySpot — service worker : appli disponible hors ligne après la 1re visite. */
-const VERSION = 'vs-2026-11-25c';
+const VERSION = 'vs-2026-11-25d';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png',
   'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'vendor/markercluster/leaflet.markercluster.js',
   'vendor/markercluster/MarkerCluster.css', 'vendor/markercluster/MarkerCluster.Default.css',
-  'vendor/lucide.min.js', 'vendor/supabase.js'];
+  'vendor/lucide.min.js', 'vendor/supabase.js',
+  'vendor/fonts/archivo-latin-700-normal.woff2', 'vendor/fonts/archivo-latin-800-normal.woff2', 'vendor/fonts/archivo-latin-900-normal.woff2', 'vendor/fonts/archivo-latin-ext-700-normal.woff2', 'vendor/fonts/archivo-latin-ext-800-normal.woff2', 'vendor/fonts/archivo-latin-ext-900-normal.woff2', 'vendor/fonts/fonts.css', 'vendor/fonts/fraunces-latin-500-italic.woff2', 'vendor/fonts/fraunces-latin-500-normal.woff2', 'vendor/fonts/fraunces-latin-ext-500-italic.woff2', 'vendor/fonts/fraunces-latin-ext-500-normal.woff2', 'vendor/fonts/inter-latin-400-normal.woff2', 'vendor/fonts/inter-latin-500-normal.woff2', 'vendor/fonts/inter-latin-600-normal.woff2', 'vendor/fonts/inter-latin-700-normal.woff2', 'vendor/fonts/inter-latin-ext-400-normal.woff2', 'vendor/fonts/inter-latin-ext-500-normal.woff2', 'vendor/fonts/inter-latin-ext-600-normal.woff2', 'vendor/fonts/inter-latin-ext-700-normal.woff2'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
