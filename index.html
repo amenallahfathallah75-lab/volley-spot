@@ -1704,7 +1704,32 @@ function renderMapCategoryRow(){
   });
 }
 
+/* Une même salle est souvent déclarée deux fois par la FFVolley sous des noms
+   proches (« DUPLEIX » / « GYMNASE DUPLEIX ») : même position = un seul point,
+   qui regroupe tous les clubs. Les positions approximatives (centre de commune)
+   ne sont pas fusionnées, car ce sont des salles différentes. */
+function gymNameScore(n){ return (/^(GYMNASE|COMPLEXE|SALLE|PALAIS|HALLE|CENTRE)/i.test(n||'') ? 100 : 0) + String(n||'').length; }
+function mergeDuplicateGyms(){
+  const byPos = new Map();
+  let merged = 0;
+  spots = spots.filter(s=>{
+    if(s.type_surface !== 'gymnase' || s.latitude == null || s.longitude == null || s.geo_approx) return true;
+    const k = (+s.latitude).toFixed(4) + ',' + (+s.longitude).toFixed(4);
+    const keep = byPos.get(k);
+    if(!keep){ byPos.set(k, s); return true; }
+    keep.usedByClubs = keep.usedByClubs || [];
+    (s.usedByClubs || []).forEach(n=>{ if(!keep.usedByClubs.includes(n)) keep.usedByClubs.push(n); });
+    if(gymNameScore(s.name) > gymNameScore(keep.name)) keep.name = s.name;
+    if(!keep.transport && s.transport) keep.transport = s.transport;
+    if(!keep.capacity && s.capacity) keep.capacity = s.capacity;
+    if(s.checkins && s.checkins.length) keep.checkins = (keep.checkins || []).concat(s.checkins);
+    merged++;
+    return false;
+  });
+  return merged;
+}
 function renderMarkers(){
+  mergeDuplicateGyms();
   markersLayer.clearLayers();
   renderedSpotIds = new Set();
   renderedClubIds = new Set();
@@ -3133,6 +3158,7 @@ function renderClubs(keepPage){
 function clubSheetHTML(club){
   const cats = pouleLabels(club.categories);
   const gym = club.homeGym;
+  const gyms = dedupeGyms(club.gymsList);
   const isFav = favorites.has(club.id);
   const phone = club.contact_phone ? String(club.contact_phone).replace(/[^0-9+]/g,'') : '';
   return `
@@ -3161,9 +3187,9 @@ function clubSheetHTML(club){
 
       ${gym ? `
       <div class="module">
-        <div class="module-title"><i data-lucide="building-2" width="14" height="14"></i> ${club.gymsList.length>1 ? 'Gymnases' : 'Gymnase'}</div>
+        <div class="module-title"><i data-lucide="building-2" width="14" height="14"></i> ${gyms.length>1 ? 'Gymnases' : 'Gymnase'}</div>
         <div class="practical-row">
-          ${club.gymsList.map((g,i)=>`<div class="line"><i data-lucide="${i===0?'map-pin':'circle-dot'}" width="13" height="13"></i><span>${i===0&&club.gymsList.length>1?'<b>Salle principale</b> · ':''}${g.name}${g.address ? ' — ' + g.address : ''}, ${g.city}</span></div>`).join('')}
+          ${gyms.map((g,i)=>`<div class="line"><i data-lucide="${i===0?'map-pin':'circle-dot'}" width="13" height="13"></i><span>${i===0&&gyms.length>1?'<b>Salle principale</b> · ':''}${g.name}${g.address ? ' — ' + g.address : ''}, ${g.city}</span></div>`).join('')}
           ${club.geo_approx ? `<div class="line" style="color:var(--sable)"><i data-lucide="alert-triangle" width="13" height="13"></i>${approxText(club)}</div>` : ''}
         </div>
       </div>` : ''}
@@ -3245,6 +3271,20 @@ let CLUB_DETAILS = {};      // 'club_<id>' -> fiche
 let MY_CLAIMS = {};         // '<id>' -> statut de ma demande
 let IS_ADMIN = false;
 /* Pages officielles FFVolley du club (saison en cours, toutes les équipes, tous niveaux). */
+/* Liste des salles d'un club sans doublons : deux salles à la même position
+   (ou même adresse) n'en font qu'une, avec le nom le plus complet. */
+function dedupeGyms(list){
+  const seen = new Map();
+  (list||[]).forEach(g=>{
+    const pc = (typeof PRECOMPUTED_COORDS !== 'undefined') ? PRECOMPUTED_COORDS[geoKey(g.name, g.city, g.postcode)] : null;
+    const k = (pc && !pc[2]) ? ('p:' + pc[0].toFixed(4) + ',' + pc[1].toFixed(4))
+            : ('a:' + norm(g.address||g.name||'').replace(/[^a-z0-9]/g,'') + '|' + (g.postcode||''));
+    const prev = seen.get(k);
+    if(!prev){ seen.set(k, g); return; }
+    if(gymNameScore(g.name) > gymNameScore(prev.name)) seen.set(k, Object.assign({}, prev, { name:g.name, transport: prev.transport || g.transport }));
+  });
+  return Array.from(seen.values());
+}
 function ffvResultsUrl(id, standings){
   return 'https://www.ffvbbeach.org/ffvbapp/resu/' + (standings ? 'planning_club_class.php' : 'planning_club.php') + '?cnclub=' + encodeURIComponent(String(id).replace('club_',''));
 }
