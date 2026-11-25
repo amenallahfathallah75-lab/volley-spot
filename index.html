@@ -3,13 +3,23 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>VolleySpot — Trouve ton terrain</title>
+<title>VolleySpot — Clubs de volley et terrains près de chez toi</title>
 <meta name="theme-color" content="#F5F1E7" />
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="icons/icon-192.png" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="description" content="Clubs FFVolley, gymnases et terrains de beach, green et street volley partout en France." />
+<meta name="description" content="Trouve un club de volley ou un terrain de beach, green et street volley près de chez toi : 1 346 clubs FFVolley, gymnases et terrains partout en France." />
+<link rel="canonical" href="https://volleyspot.fr/" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="VolleySpot" />
+<meta property="og:title" content="VolleySpot — Clubs de volley et terrains près de chez toi" />
+<meta property="og:description" content="1 346 clubs FFVolley, gymnases et terrains de beach, green et street volley sur une carte. Gratuit." />
+<meta property="og:url" content="https://volleyspot.fr/" />
+<meta property="og:image" content="https://volleyspot.fr/og-image.png" />
+<meta property="og:image:width" content="1200" /><meta property="og:image:height" content="630" />
+<meta property="og:locale" content="fr_FR" />
+<meta name="twitter:card" content="summary_large_image" />
 <link rel="stylesheet" href="vendor/fonts/fonts.css">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
 <link rel="stylesheet" href="vendor/markercluster/MarkerCluster.css" />
@@ -27,13 +37,13 @@
     --line:#E3DDCE;
     --text-hi:#182B2E;
     --text-mid:#5E6E71;
-    --text-low:#93938C;
-    --accent:#E14F3D;
+    --text-low:#6B6C65;
+    --accent:#D2432F;
     --accent-2:#0F6B62;
     --accent-ink:#FFFFFF;
     --sable:#C98A3A;
     --herbe:#1B8A7E;
-    --gymnase:#E14F3D;
+    --gymnase:#D2432F;
     --bitume:#7C5CD6;
     --danger:#DC2626;
     --radius-lg:22px;
@@ -2453,6 +2463,16 @@ async function saveProfileForm(){
 document.getElementById('profile-modal-close').addEventListener('click', closeProfileModal);
 document.getElementById('profile-modal-save').addEventListener('click', saveProfileForm);
 document.getElementById('profile-otp-go').addEventListener('click', verifyOtpCode);
+/* Mesure d'audience sans cookie : un compteur anonyme par jour (aucune donnée personnelle, pas d'adresse IP conservée). */
+if(SB_ON){
+  try{
+    if(!sessionStorage.getItem('vs_seen')){
+      sessionStorage.setItem('vs_seen','1');
+      const kind = new URLSearchParams(location.search).get('club') ? 'club' : (window.matchMedia && matchMedia('(display-mode: standalone)').matches ? 'install' : 'app');
+      sb.rpc('track_view', { p_kind: kind }).then(()=>{}, ()=>{});
+    }
+  }catch(e){}
+}
 /* Connexion Google : le bouton n'apparaît que si Google est activé côté Supabase. */
 let GOOGLE_ON = false;
 if(SB_ON){
@@ -3429,12 +3449,23 @@ function openEditForm(club){
 async function renderAdminPanel(){
   const box = document.getElementById('admin-panel'); if(!box) return;
   if(!SB_ON || !IS_ADMIN){ box.innerHTML = ''; return; }
-  const [{ data: claims }, { data: spotsP }] = await Promise.all([
+  const since = new Date(Date.now() - 30*864e5).toISOString().slice(0,10);
+  const [{ data: claims }, { data: spotsP }, { data: views }] = await Promise.all([
     sb.from('club_claims').select('id,club_id,role,message,contact_email,created_at').eq('status','pending').order('created_at'),
-    sb.from('user_spots').select('id,name,city,type_surface,latitude,longitude,created_at').eq('status','pending').order('created_at')
+    sb.from('user_spots').select('id,name,city,type_surface,latitude,longitude,created_at').eq('status','pending').order('created_at'),
+    sb.from('page_views').select('day,kind,views').gte('day', since)
   ]);
+  const today = new Date().toISOString().slice(0,10), weekAgo = new Date(Date.now() - 7*864e5).toISOString().slice(0,10);
+  const sum = f => (views||[]).filter(f).reduce((a,v)=>a+v.views,0);
+  const statsHTML = `<div class="filter-section-label" style="padding:4px 0 8px;">Visites (sans cookie)</div>
+    <div class="admin-item" style="display:flex;justify-content:space-between;gap:8px;text-align:center;">
+      <div><b style="font-size:20px">${sum(v=>v.day===today)}</b><br><span style="color:var(--text-mid);font-size:12px">aujourd'hui</span></div>
+      <div><b style="font-size:20px">${sum(v=>v.day>weekAgo)}</b><br><span style="color:var(--text-mid);font-size:12px">7 jours</span></div>
+      <div><b style="font-size:20px">${sum(()=>true)}</b><br><span style="color:var(--text-mid);font-size:12px">30 jours</span></div>
+      <div><b style="font-size:20px">${sum(v=>v.kind==='club'||v.kind==='dep')}</b><br><span style="color:var(--text-mid);font-size:12px">via Google</span></div>
+    </div>`;
   const clubName = id => (clubs.find(c=>c.id==='club_'+id)||{}).name || id;
-  box.innerHTML = `<div class="filter-section-label" style="padding:4px 0 8px;">Modération</div>` +
+  box.innerHTML = statsHTML + `<div class="filter-section-label" style="padding:4px 0 8px;">Modération</div>` +
     ((claims||[]).length || (spotsP||[]).length ? '' : `<div class="profile-note">Rien à valider pour l'instant.</div>`) +
     (claims||[]).map(c=>`<div class="admin-item"><b>Gestion : ${esc(clubName(c.club_id))}</b><br>${esc(c.role||'')} · ${esc(c.contact_email||'')}<br><span style="color:var(--text-mid)">${esc(c.message||'')}</span>
       <div class="row"><button data-claim="${c.id}" data-st="rejected">Refuser</button><button class="ok" data-claim="${c.id}" data-st="approved">Valider</button></div></div>`).join('') +
@@ -3671,7 +3702,7 @@ function openLegal(kind){
       <p><b>Propriété intellectuelle</b> — Les noms et logos des clubs appartiennent à leurs clubs respectifs et sont affichés à titre d’identification. Tout club peut en demander le retrait à ${mail}. VolleySpot est un projet indépendant, non affilié à la FFVolley.</p>
       <p><b>Source des données clubs</b> — Annuaire public des clubs de la FFVolley (coordonnées des correspondants publiées par la fédération). VolleySpot n’exploite ces données qu’à des fins de mise en relation avec les clubs.</p>
       <p><b>Droit de rectification et de retrait</b> — Tout club ou correspondant peut demander la correction ou la suppression de ses informations en écrivant à ${mail} (lien également présent sur chaque fiche club). Les demandes sont traitées sous 30 jours.</p>
-      <p><b>Sans compte</b> — Tes favoris restent uniquement sur ton appareil. Aucun cookie publicitaire, aucun outil de suivi, aucune mesure d’audience.</p>
+      <p><b>Sans compte</b> — Tes favoris restent uniquement sur ton appareil. Aucun cookie, aucun traceur publicitaire. La fréquentation est mesurée par un simple compteur anonyme (nombre de visites par jour), sans cookie ni adresse IP conservée : aucune donnée ne permet de t’identifier.</p>
       <p><b>Avec un compte</b> — Nous enregistrons ton adresse e-mail (pour la connexion, jamais affichée), ton prénom ou pseudo (visible des autres joueurs), et ce que tu publies : check-ins, sessions et inscriptions, messages du chat, terrains proposés, demandes de gestion de club et infos de fiche club. Si tu te connectes avec Google, Google nous transmet ton adresse e-mail et ton prénom (rien d’autre n’est utilisé). Base légale : l’exécution du service que tu demandes en créant un compte (art. 6.1.b du RGPD). Le service est réservé aux personnes d’au moins 15 ans.</p>
       <p><b>Destinataires et sous-traitants</b> — Supabase, Inc. : comptes et contenus, serveurs situés dans l’Union européenne (Francfort). Resend : envoi des e-mails de connexion, région Union européenne. GitHub, Inc. : hébergement du site. Ces prestataires étant des sociétés américaines, un accès depuis les États-Unis ne peut être exclu ; il est encadré par les clauses contractuelles types de la Commission européenne et, le cas échéant, le Data Privacy Framework UE–États-Unis. Aucune donnée n’est vendue ni utilisée à des fins publicitaires.</p>
       <p><b>Durée de conservation</b> — Les check-ins sont effacés automatiquement après 30 jours, les sessions 30 jours après leur date, les messages du chat après 90 jours. Le reste (profil, terrains proposés, fiches club) est conservé tant que ton compte existe, puis effacé immédiatement à sa suppression.</p>

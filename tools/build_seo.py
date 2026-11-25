@@ -35,13 +35,14 @@ header span{color:#e04e39}h1{font-size:26px;margin:18px 0 4px}.sub{color:#5b6b6c
 .cta{display:inline-block;background:#e04e39;color:#fff;border-radius:12px;padding:12px 18px;font-weight:700;text-decoration:none;margin-top:8px}
 ul{padding-left:18px}li{margin:4px 0}footer{color:#7b8a8b;font-size:12.5px;margin-top:30px}"""
 def page(title, desc, canon, body, ld=None):
+    kind = "club" if "/club/" in canon else ("annuaire" if canon.endswith("/clubs/") else "dep")
     ld_tag = f'<script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script>' if ld else ''
     return f"""<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{E(title)}</title><meta name="description" content="{E(desc)}"><link rel="canonical" href="{canon}">
-<meta property="og:title" content="{E(title)}"><meta property="og:description" content="{E(desc)}"><meta property="og:url" content="{canon}"><meta property="og:type" content="website">
+<meta property="og:title" content="{E(title)}"><meta property="og:description" content="{E(desc)}"><meta property="og:url" content="{canon}"><meta property="og:type" content="website"><meta property="og:image" content="https://volleyspot.fr/og-image.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:site_name" content="VolleySpot"><meta property="og:locale" content="fr_FR"><meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="../icons/icon-192.png"><style>{CSS}</style>{ld_tag}</head><body><main>
 <header><a href="../">Volley<span>Spot</span></a></header>{body}
-<footer>Données issues de l'annuaire public de la FFVolley. VolleySpot est un projet indépendant, non affilié à la FFVolley.</footer></main></body></html>"""
+<footer>Données issues de l'annuaire public de la FFVolley. VolleySpot est un projet indépendant, non affilié à la FFVolley.</footer></main><script>try{{if(!sessionStorage.getItem("vs_seen")){{sessionStorage.setItem("vs_seen","1");fetch("https://wckxfpnawicgdvdpsblv.supabase.co/rest/v1/rpc/track_view",{{method:"POST",keepalive:true,headers:{{"Content-Type":"application/json",apikey:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indja3hmcG5hd2ljZ2R2ZHBzYmx2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgwMzUzNDcsImV4cCI6MjEwMzYxMTM0N30.KIe8Led9Y9-UwIcA-8P5XapCJBOP5XpcgbO05ZNfkwE",Authorization:"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indja3hmcG5hd2ljZ2R2ZHBzYmx2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgwMzUzNDcsImV4cCI6MjEwMzYxMTM0N30.KIe8Led9Y9-UwIcA-8P5XapCJBOP5XpcgbO05ZNfkwE"}},body:JSON.stringify({{p_kind:"{kind}"}})}}).catch(function(){{}})}}}}catch(e){{}}</script></body></html>"""
 SMALL = {'de','du','des','la','le','les','sur','sous','en','et','aux','au','lès','les'}
 def tcity(x):
     x = (x or '').strip()
