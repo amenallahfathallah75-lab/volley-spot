@@ -4,7 +4,7 @@ Usage : python3 tools/build_seo.py   (nécessite playwright + chromium)"""
 import asyncio, json, os, re, shutil, html, http.server, threading, functools
 from playwright.async_api import async_playwright
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BASE = 'https://amenallahfathallah75-lab.github.io/volley-spot/'
+BASE = 'https://volleyspot.fr/'
 DUMP = """window.__VS_DUMP = () => clubs.map(c => ({ id: rawClubId(c), slug: clubSlug(c), name: c.name, city: c.city,
   postcode: c.postcode, dep: c.dep, depLabel: depLabel(c.dep), gender: c.gender, cats: pouleLabels(c.categories),
   lat: c.latitude, lon: c.longitude, approx: !!c.geo_approx, colors: c.couleurs || '',
