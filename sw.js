@@ -1,5 +1,5 @@
 /* VolleySpot — service worker : appli disponible hors ligne après la 1re visite. */
-const VERSION = 'vs-2026-11-25g';
+const VERSION = 'vs-2026-11-25h';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png',
   'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'vendor/markercluster/leaflet.markercluster.js',
   'vendor/markercluster/MarkerCluster.css', 'vendor/markercluster/MarkerCluster.Default.css',
@@ -20,7 +20,7 @@ self.addEventListener('fetch', e => {
   // Page : réseau d'abord (pour recevoir les mises à jour), cache en secours.
   if (req.mode === 'navigate') {
     // Pages club/département statiques : réseau direct, pas de mise en cache de l'appli.
-    if (/\/clubs?\//.test(url.pathname)) return;
+    if (/\/(clubs?|design)\//.test(url.pathname)) return;
     e.respondWith(fetch(req).then(r => { if (r.ok) { const copy = r.clone(); caches.open(VERSION).then(c => c.put('index.html', copy)); } return r; })
       .catch(() => caches.match('index.html')));
     return;
