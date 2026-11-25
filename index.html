@@ -3607,6 +3607,7 @@ async function loadMyClaims(){
     const { data } = await sb.from('club_claims').select('club_id,status').eq('user_id', myUid);
     MY_CLAIMS = {}; (data||[]).forEach(c=>{ MY_CLAIMS[c.club_id] = c.status; });
     const { data: adm } = await sb.rpc('is_admin'); IS_ADMIN = !!adm;
+    if(IS_ADMIN) refreshEsSnapshot(false);
   }catch(e){}
 }
 function clubRecruitPill(c){
@@ -3706,6 +3707,7 @@ async function renderAdminPanel(){
   const box = document.getElementById('admin-panel'); if(!box) return;
   if(!SB_ON || !IS_ADMIN){ box.innerHTML = ''; return; }
   const since = new Date(Date.now() - 30*864e5).toISOString().slice(0,10);
+  if(!ES_SNAP_INFO) await getEsSnapshot(false);
   const [{ data: claims }, { data: spotsP }, { data: views }] = await Promise.all([
     sb.from('club_claims').select('id,club_id,role,message,contact_email,created_at').eq('status','pending').order('created_at'),
     sb.from('user_spots').select('id,name,city,type_surface,latitude,longitude,created_at').eq('status','pending').order('created_at'),
@@ -3728,8 +3730,19 @@ async function renderAdminPanel(){
     (spotsP||[]).map(s=>`<div class="admin-item"><b>Terrain : ${esc(s.name)}</b><br>${esc(s.city)} · ${esc((SURFACE_META[s.type_surface]||{}).label||s.type_surface)} · <a href="https://www.google.com/maps/search/?api=1&query=${s.latitude},${s.longitude}" target="_blank" rel="noopener">voir la position</a>
       <div class="row"><button data-spot="${s.id}" data-st="rejected">Refuser</button><button class="ok" data-spot="${s.id}" data-st="approved">Publier</button></div></div>`).join('') +
     `<div class="profile-note" style="margin-top:10px;">Pour modifier, déplacer ou supprimer un point : ouvre sa fiche sur la carte, la rubrique « Administration » est en bas.</div>` +
-    adminOverridesHTML() + adminTrashHTML();
+    adminOverridesHTML() + adminTrashHTML() +
+    `<div class="filter-section-label" style="padding:14px 0 8px;">Terrains extérieurs (ministère des Sports)</div>
+     <div class="admin-item">${ES_SNAP_INFO ? `Copie enregistrée : <b>${ES_SNAP_INFO.n} terrains</b>, mise à jour le ${esc(String(ES_SNAP_INFO.updated_at).slice(0,10).split('-').reverse().join('/'))}.` : 'Aucune copie enregistrée pour l’instant.'}
+       <div style="color:var(--text-mid);font-size:12.5px;margin-top:4px;">Elle se met à jour toute seule chaque mois quand un administrateur ouvre l’appli.</div>
+       <div class="row"><button class="ok" id="es-refresh-btn">Mettre à jour maintenant</button></div></div>`;
   refreshIcons();
+  const esBtn = document.getElementById('es-refresh-btn');
+  if(esBtn) esBtn.addEventListener('click', async ()=>{
+    esBtn.disabled = true; esBtn.textContent = 'Téléchargement…';
+    const ok = await refreshEsSnapshot(true);
+    showToast(ok ? 'Copie des terrains mise à jour' : 'Mise à jour impossible (site du ministère indisponible ?)', ok ? 'check' : 'alert-circle');
+    renderAdminPanel();
+  });
   box.querySelectorAll('[data-trash-restore]').forEach(b=>b.addEventListener('click', ()=>{ b.disabled = true; restoreFromTrash(b.dataset.trashRestore); }));
   box.querySelectorAll('[data-ov-undo]').forEach(b=>b.addEventListener('click', ()=>{ if(confirm('Annuler cette modification et rétablir le point d’origine ?')) undoMapOverride(b.dataset.ovUndo); }));
   box.querySelectorAll('[data-claim]').forEach(b=>b.addEventListener('click', async ()=>{ await sb.from('club_claims').update({ status:b.dataset.st }).eq('id', b.dataset.claim); showToast(b.dataset.st==='approved'?'Demande validée':'Demande refusée','check-circle'); renderAdminPanel(); }));
@@ -4130,6 +4143,47 @@ async function fetchDataEs(){
   }
   return out;
 }
+/* Copie des terrains dans Supabase (table es_snapshot) : chargée en priorité, en une seule
+   requête rapide, sans dépendre du site du ministère. Elle est rafraîchie automatiquement
+   (au plus une fois par mois) quand un administrateur ouvre l'appli. */
+const ES_KEYS = ['equip_numero','inst_nom','equip_nom','new_name','inst_cp','inst_adresse','lat','lon','equip_sol','equip_eclair','equip_acc_libre','equip_type_code','equip_nature'];
+function esPack(r){
+  const c = r.equip_coordonnees; if(!c || c.lat==null) return null;
+  return ES_KEYS.map(k=> k==='lat' ? Math.round(c.lat*1e6)/1e6 : k==='lon' ? Math.round(c.lon*1e6)/1e6 : (r[k]==null ? null : r[k]));
+}
+function esUnpack(a){
+  const r = {}; ES_KEYS.forEach((k,i)=>{ if(k!=='lat' && k!=='lon' && a[i]!=null) r[k] = a[i]; });
+  r.equip_coordonnees = { lat:a[6], lon:a[7] }; return r;
+}
+let ES_SNAP_INFO = null;
+async function getEsSnapshot(withRecords){
+  if(!SB_ON) return null;
+  try{
+    const { data, error } = await sb.from('es_snapshot').select(withRecords ? 'records,n,updated_at' : 'n,updated_at').eq('id', 1).maybeSingle();
+    if(error || !data) return null;
+    ES_SNAP_INFO = { n:data.n, updated_at:data.updated_at };
+    return data;
+  }catch(e){ return null; }
+}
+let esRefreshRunning = false;
+async function refreshEsSnapshot(force){
+  if(!SB_ON || !IS_ADMIN || esRefreshRunning) return false;
+  if(!force){
+    const info = ES_SNAP_INFO || await getEsSnapshot(false);
+    if(info && Date.now() - Date.parse(info.updated_at) < 30*864e5) return false;
+  }
+  esRefreshRunning = true;
+  try{
+    const recs = await fetchDataEs();
+    const packed = recs.map(esPack).filter(Boolean);
+    if(packed.length < 300) return false;
+    const { error } = await sb.from('es_snapshot').upsert({ id:1, records:packed, n:packed.length, updated_at:new Date().toISOString() });
+    if(error) return false;
+    ES_SNAP_INFO = { n:packed.length, updated_at:new Date().toISOString() };
+    return true;
+  }catch(e){ return false; }
+  finally{ esRefreshRunning = false; }
+}
 async function loadDataEsTerrains(){
   let records = null;
   try{
@@ -4139,11 +4193,14 @@ async function loadDataEsTerrains(){
       if(obj && obj.t && (Date.now()-obj.t) < DATAES_TTL) records = obj.r;
     }
   }catch(e){}
+  const keep = r=>{ try{ window.storage.set(DATAES_CACHE_KEY, JSON.stringify({ t:Date.now(), r }), false); }catch(e){} };
   if(!records){
-    try{
-      records = await fetchDataEs();
-      try{ await window.storage.set(DATAES_CACHE_KEY, JSON.stringify({ t:Date.now(), r:records }), false); }catch(e){}
-    }catch(e){ records = []; }
+    const snap = await getEsSnapshot(true);
+    if(snap && Array.isArray(snap.records) && snap.records.length){ records = snap.records.map(esUnpack); keep(records); }
+  }
+  if(!records){
+    try{ records = await fetchDataEs(); keep(records); }
+    catch(e){ records = []; }
   }
   const existing = spots.filter(s=>s.type_surface!=='gymnase' && s.latitude!=null);
   let added = 0;
