@@ -750,8 +750,8 @@
       <div class="profile-card">
         <div class="avatar" id="profile-avatar">?</div>
         <div style="font-family:'Archivo',sans-serif;font-weight:700;font-size:17px;" id="profile-display-name">Profil non créé</div>
-        <div style="color:var(--text-mid);font-size:12.5px;margin-top:2px;" id="profile-display-email">Crée ton profil pour signaler ta présence</div>
-        <button class="gps-btn" id="profile-edit-btn" style="margin-top:14px;"><i data-lucide="user-cog" width="16" height="16"></i> <span id="profile-edit-btn-label">Créer mon profil</span></button>
+        <div style="color:var(--text-mid);font-size:12.5px;margin-top:2px;" id="profile-display-email">Connecte-toi pour signaler ta présence et discuter</div>
+        <button class="gps-btn" id="profile-edit-btn" style="margin-top:14px;"><i data-lucide="user-cog" width="16" height="16"></i> <span id="profile-edit-btn-label">Se connecter / créer un compte</span></button>
         <div class="stat-grid">
           <div class="stat-box"><div class="stat-num" id="stat-checkins">0</div><div class="stat-lbl">Check-ins</div></div>
           <div class="stat-box"><div class="stat-num" id="stat-favs">0</div><div class="stat-lbl">Favoris</div></div>
@@ -793,7 +793,7 @@
   <div class="modal-backdrop" id="profile-modal-backdrop">
     <div class="modal-card">
       <div class="legend-title">
-        Ton profil
+        <span id="profile-modal-title">Connexion</span>
         <button class="legend-close-btn" id="profile-modal-close"><i data-lucide="x" width="18" height="18"></i></button>
       </div>
       <div class="profile-note">
@@ -2337,6 +2337,7 @@ function openProfileModal(onSuccess){
   document.getElementById('profile-email-input').value = myProfile ? myProfile.email : '';
   document.getElementById('profile-modal-error').textContent = '';
   document.getElementById('profile-consent').checked = !!myProfile;
+  document.getElementById('profile-modal-title').textContent = myProfile ? 'Ton profil' : 'Connexion';
   if(!otpEmail) document.getElementById('profile-otp-row').style.display = 'none';
   document.getElementById('profile-consent-row').style.display = myProfile ? 'none' : 'flex';
   document.getElementById('profile-modal-backdrop').classList.add('show');
@@ -2377,7 +2378,7 @@ let otpSending = false, otpEmail = null, otpTimer = null;
 function setOtpCooldown(on){
   const btn = document.getElementById('profile-modal-save');
   clearInterval(otpTimer);
-  if(!on){ btn.disabled = false; btn.style.opacity = ''; btn.innerHTML = '<i data-lucide="check" width="16" height="16"></i> Valider'; refreshIcons(); return; }
+  if(!on){ btn.disabled = false; btn.style.opacity = ''; btn.innerHTML = '<i data-lucide="check" width="16" height="16"></i> ' + (SB_ON ? 'Recevoir mon code de connexion' : 'Valider'); refreshIcons(); return; }
   let left = 60; btn.disabled = true; btn.style.opacity = '.55';
   const tick = ()=>{ btn.textContent = 'Renvoyer un e-mail dans ' + left + ' s'; if(left-- <= 0) setOtpCooldown(false); };
   tick(); otpTimer = setInterval(tick, 1000);
@@ -3580,15 +3581,15 @@ function renderProfileStats(){
   }else{
     avatarEl.textContent = '?';
     nameEl.textContent = 'Profil non créé';
-    emailEl.textContent = 'Crée ton profil pour signaler ta présence';
-    btnLabel.textContent = 'Créer mon profil';
+    emailEl.textContent = 'Connecte-toi pour signaler ta présence et discuter';
+    btnLabel.textContent = 'Se connecter / créer un compte';
   }
 }
 document.getElementById('profile-edit-btn').addEventListener('click', ()=> openProfileModal());
 if(SB_ON){
   const n = document.getElementById('profile-note-mode');
-  if(n) n.textContent = 'Connexion sans mot de passe : tu reçois un lien par email. Ton prénom est visible des autres joueurs, ton email ne l’est jamais.';
-  const lbl = document.querySelector('#profile-modal-save'); if(lbl) lbl.lastChild.textContent = ' Recevoir mon lien de connexion';
+  if(n) n.textContent = 'Connexion sans mot de passe : tu reçois un code par e-mail. Ton prénom est visible des autres joueurs, ton email ne l’est jamais.';
+  const lbl = document.querySelector('#profile-modal-save'); if(lbl) lbl.lastChild.textContent = ' Recevoir mon code de connexion';
 }
 
 /* ===================== COMPTE : DÉCONNEXION / SUPPRESSION (RGPD) ===================== */
