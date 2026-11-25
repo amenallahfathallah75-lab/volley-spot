@@ -1323,7 +1323,7 @@ let clubs = REAL_CLUBS_RAW.concat(EXTRA_IDF_CLUBS_RAW).concat(EXTRA_HDF_CLUBS_RA
     contact_email:c.email, contact_phone:c.phone,
     categories:c.poules || [], gender: ({M:'Masculin', F:'Féminin'})[c.gender] || c.gender || 'Non renseigné',
     ffvolley_certified:true,
-    ffvolley_link: c.ffvolley_link || null,
+    ffvolley_link: c.id ? ffvResultsUrl(c.id, false) : null,
     homeGym: homeGym,
     gymsList: c.gyms || [],
     geo_key: homeGym ? geoKey(homeGym.name, homeGym.city, homeGym.postcode) : ('__club_'+c.id),
@@ -3176,6 +3176,15 @@ function clubSheetHTML(club){
         </div>
       </div>` : ''}
 
+      <div class="module">
+        <div class="module-title"><i data-lucide="trophy" width="14" height="14"></i> Résultats & classements</div>
+        <div class="action-row" style="margin-top:0;">
+          <a class="btn-ghost" style="flex:1;justify-content:center;text-decoration:none;" href="${ffvResultsUrl(club.id, false)}" target="_blank" rel="noopener"><i data-lucide="calendar-days" width="16" height="16"></i> Matchs</a>
+          <a class="btn-ghost" style="flex:1;justify-content:center;text-decoration:none;" href="${ffvResultsUrl(club.id, true)}" target="_blank" rel="noopener"><i data-lucide="list-ordered" width="16" height="16"></i> Classements</a>
+        </div>
+        <div style="font-size:11.5px;color:var(--text-low);margin-top:6px;">Calendrier, scores et classements de toutes les équipes du club cette saison, sur le site officiel de la FFVolley.</div>
+      </div>
+
       <div class="action-row">
         <button class="btn-primary" id="btn-club-itinerary"><i data-lucide="navigation" width="16" height="16"></i> Itinéraire</button>
         ${(club.contact_email || phone)
@@ -3235,6 +3244,10 @@ async function shareLink(title, text, lat, lon){
 let CLUB_DETAILS = {};      // 'club_<id>' -> fiche
 let MY_CLAIMS = {};         // '<id>' -> statut de ma demande
 let IS_ADMIN = false;
+/* Pages officielles FFVolley du club (saison en cours, toutes les équipes, tous niveaux). */
+function ffvResultsUrl(id, standings){
+  return 'https://www.ffvbbeach.org/ffvbapp/resu/' + (standings ? 'planning_club_class.php' : 'planning_club.php') + '?cnclub=' + encodeURIComponent(String(id).replace('club_',''));
+}
 function rawClubId(club){ return String(club.id).replace('club_',''); }
 function safeUrl(u){ u = String(u||'').trim(); if(!u) return ''; if(!/^https?:\/\//i.test(u)) u = 'https://' + u; try{ const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.href : ''; }catch(e){ return ''; } }
 async function loadClubDetails(){
