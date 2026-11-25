@@ -1,5 +1,5 @@
 /* VolleySpot — service worker : appli disponible hors ligne après la 1re visite. */
-const VERSION = 'vs-2026-11-22d';
+const VERSION = 'vs-2026-11-25a';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png',
   'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'vendor/markercluster/leaflet.markercluster.js',
   'vendor/markercluster/MarkerCluster.css', 'vendor/markercluster/MarkerCluster.Default.css',

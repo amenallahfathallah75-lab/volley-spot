@@ -756,6 +756,10 @@
           <div class="stat-box"><div class="stat-num" id="stat-added">0</div><div class="stat-lbl">Ajoutés</div></div>
         </div>
       </div>
+      <div id="account-actions" style="display:none;margin:14px 0 6px;">
+        <div class="settings-item" id="account-logout" style="cursor:pointer;"><div class="left"><i data-lucide="log-out" width="17" height="17"></i> Se déconnecter</div></div>
+        <div class="settings-item" id="account-delete" style="cursor:pointer;color:var(--danger);"><div class="left"><i data-lucide="trash-2" width="17" height="17"></i> Supprimer mon compte</div></div>
+      </div>
       <div id="admin-panel"></div>
       <div class="settings-item" id="open-legal" style="cursor:pointer;"><div class="left"><i data-lucide="shield" width="17" height="17"></i> Confidentialité & mentions légales</div><i data-lucide="chevron-right" width="17" height="17" style="color:var(--text-low)"></i></div>
       <a class="settings-item" id="open-support" style="text-decoration:none;"><div class="left"><i data-lucide="help-circle" width="17" height="17"></i> Aide & signalement</div><i data-lucide="chevron-right" width="17" height="17" style="color:var(--text-low)"></i></a>
@@ -2303,6 +2307,7 @@ async function sbSetUser(user){
   }
   try{ localStorage.removeItem('vs_pending_name'); }catch(e){}
   myProfile = { name: prof.display_name, email: user.email, id: user.id };
+  renderAccountActions(true);
   renderProfileStats();
   loadMyClaims().then(()=>{ if(typeof renderAdminPanel==='function') renderAdminPanel(); });
 }
@@ -2312,7 +2317,7 @@ if(SB_ON){
       await sbSetUser(session.user);
       if(event === 'SIGNED_IN') showToast('Connecté, bienvenue ' + myProfile.name + ' !', 'check-circle');
     }
-    if(event === 'SIGNED_OUT'){ myProfile = null; myUid = null; renderProfileStats(); }
+    if(event === 'SIGNED_OUT'){ myProfile = null; myUid = null; IS_ADMIN = false; MY_CLAIMS = {}; renderProfileStats(); renderAccountActions(false); if(typeof renderAdminPanel==='function') renderAdminPanel(); }
   });
 }
 async function saveProfileForm(){
@@ -3442,6 +3447,30 @@ if(SB_ON){
   const lbl = document.querySelector('#profile-modal-save'); if(lbl) lbl.lastChild.textContent = ' Recevoir mon lien de connexion';
 }
 
+/* ===================== COMPTE : DÉCONNEXION / SUPPRESSION (RGPD) ===================== */
+function renderAccountActions(on){
+  const box = document.getElementById('account-actions'); if(box) box.style.display = (on && SB_ON) ? '' : 'none';
+}
+document.getElementById('account-logout').addEventListener('click', async ()=>{
+  await sb.auth.signOut(); showToast('Déconnecté', 'log-out');
+});
+document.getElementById('account-delete').addEventListener('click', ()=>{
+  openClubAdmin('Supprimer mon compte', `
+    <div class="profile-note">Ton compte sera supprimé définitivement, avec toutes les données associées : profil, check-ins, sessions créées et inscriptions, messages du chat, terrains proposés, demandes de gestion de club. Cette action est irréversible.</div>
+    <label>Pour confirmer, écris SUPPRIMER</label>
+    <input class="form-input" id="del-confirm" autocomplete="off">
+    <div id="del-err" style="color:var(--danger);font-size:12px;min-height:14px;margin-top:6px;"></div>
+    <button class="submit-btn" id="del-go" style="background:var(--danger);">Supprimer définitivement</button>`);
+  document.getElementById('del-go').addEventListener('click', async ()=>{
+    if(document.getElementById('del-confirm').value.trim().toUpperCase() !== 'SUPPRIMER'){ document.getElementById('del-err').textContent = 'Écris SUPPRIMER pour confirmer.'; return; }
+    const { error } = await sb.rpc('delete_my_account');
+    if(error){ document.getElementById('del-err').textContent = 'Suppression impossible : ' + error.message; return; }
+    try{ await sb.auth.signOut({ scope:'local' }); }catch(e){}
+    try{ localStorage.removeItem('vs_pending_name'); }catch(e){}
+    closeClubAdmin(); showToast('Compte supprimé', 'check-circle');
+  });
+});
+
 /* ===================== MENTIONS LÉGALES / À PROPOS ===================== */
 function openLegal(kind){
   const t = document.getElementById('legal-text');
@@ -3458,7 +3487,11 @@ function openLegal(kind){
     t.innerHTML = `<p><b>Éditeur</b> — VolleySpot, projet indépendant. Contact : ${mail}.</p>
       <p><b>Source des données clubs</b> — Annuaire public des clubs de la FFVolley (coordonnées des correspondants publiées par la fédération). VolleySpot ne revend ni n'exploite ces données à d'autres fins que la mise en relation avec les clubs.</p>
       <p><b>Droit de rectification et de retrait</b> — Tout club ou correspondant peut demander la correction ou la suppression de ses informations en écrivant à ${mail} (lien également présent sur chaque fiche club). Les demandes sont traitées sous 30 jours.</p>
-      <p><b>Vos données</b> — Le profil (prénom, email), les favoris et les check-ins sont enregistrés uniquement sur votre appareil${window.__VS_LOCAL_STORAGE ? '' : ' ou dans l’espace de stockage de l’application'}. Aucun cookie publicitaire, aucun suivi.</p>
+      <p><b>Sans compte</b> — Tes favoris restent uniquement sur ton appareil. Aucun cookie publicitaire, aucun outil de suivi.</p>
+      <p><b>Avec un compte</b> — Nous enregistrons ton adresse email (pour la connexion, jamais affichée), ton prénom ou pseudo (visible des autres joueurs), et ce que tu publies : check-ins, sessions et inscriptions, messages du chat, terrains proposés, demandes de gestion de club et infos de fiche club. Base légale : l’exécution du service que tu demandes en créant un compte.</p>
+      <p><b>Hébergement</b> — Comptes et contenus : Supabase, serveurs situés en Union européenne (Francfort). Site : GitHub Pages. Aucune donnée n’est vendue ni utilisée à des fins publicitaires.</p>
+      <p><b>Durée de conservation</b> — Tes données sont conservées tant que ton compte existe, puis effacées immédiatement à sa suppression.</p>
+      <p><b>Tes droits</b> — Accès, rectification, effacement, portabilité, opposition : bouton « Supprimer mon compte » dans Profil, ou écris à ${mail}. Tu peux aussi saisir la CNIL (cnil.fr).</p>
       <p><b>Terrains extérieurs</b> — Recensement des équipements sportifs (Data ES, ministère des Sports), sous Licence Ouverte 2.0.</p>
       <p><b>Services tiers</b> — Fond de carte © OpenStreetMap / CARTO, météo Open-Meteo, adresses IGN Géoplateforme, équipements sportifs Data ES. Ces services reçoivent votre adresse IP lors de leur chargement.</p>`;
   }
