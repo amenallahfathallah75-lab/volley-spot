@@ -647,10 +647,10 @@
       <div class="search-row" style="position:relative;">
         <div class="search-box">
           <i data-lucide="search" width="17" height="17" style="color:var(--text-low)"></i>
-          <input id="search-input" placeholder="Terrain, club, gymnase, ville…" autocomplete="off" />
+          <input id="search-input" aria-label="Rechercher un terrain, un club ou une ville" placeholder="Terrain, club, gymnase, ville…" autocomplete="off" />
         </div>
-        <button class="locate-btn" id="btn-geoloc"><i data-lucide="crosshair" width="19" height="19"></i></button>
-        <button class="locate-btn" id="btn-loc-filter" title="Filtrer par lieu"><i data-lucide="map-pin" width="19" height="19"></i></button>
+        <button class="locate-btn" id="btn-geoloc" aria-label="Me localiser sur la carte"><i data-lucide="crosshair" width="19" height="19"></i></button>
+        <button class="locate-btn" id="btn-loc-filter" aria-label="Filtrer par région ou département" title="Filtrer par lieu"><i data-lucide="map-pin" width="19" height="19"></i></button>
         <div id="search-results"></div>
       </div>
       <div class="filter-row" id="filter-row">
@@ -666,7 +666,7 @@
 
     <div class="geo-banner" id="geo-banner"><div class="spinner"></div><span id="geo-banner-text">Localisation des terrains et clubs…</span></div>
 
-    <button class="my-loc-btn" id="btn-myloc"><i data-lucide="locate-fixed" width="20" height="20"></i></button>
+    <button class="my-loc-btn" id="btn-myloc" aria-label="Centrer la carte sur ma position"><i data-lucide="locate-fixed" width="20" height="20"></i></button>
   </div>
 
   <!-- ===================== CLUBS VIEW ===================== -->
@@ -677,10 +677,11 @@
       <div class="category-search-label"><i data-lucide="tags" width="14" height="14"></i>Chercher un club ou une catégorie<button class="info-btn" id="legend-btn-clubs">?</button></div>
       <div class="search-box category-box" style="position:relative;">
         <i data-lucide="search" width="17" height="17" style="color:var(--accent)"></i>
-        <input id="club-category-search" placeholder="Nom, ville ou catégorie (ex : Nantes, N3M)…" autocomplete="off" />
+        <input id="club-category-search" aria-label="Rechercher un club, une ville ou une catégorie" placeholder="Nom, ville ou catégorie (ex : Nantes, N3M)…" autocomplete="off" />
         <div id="category-results"></div>
       </div>
       <div class="quick-cat-row" id="quick-cat-row"></div>
+      <button class="chip" id="clubs-near-btn" type="button" style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;"><i data-lucide="navigation" width="14" height="14"></i> Clubs près de moi</button>
     </div>
     <div id="club-dep-gender-sticky">
       <div class="filter-section-label"><i data-lucide="map-pin" width="12" height="12" style="vertical-align:-1px;"></i> Département</div>
@@ -792,7 +793,7 @@
     <div id="legend-card">
       <div class="legend-title">
         Niveaux de jeu
-        <button class="legend-close-btn" id="legend-close-btn"><i data-lucide="x" width="18" height="18"></i></button>
+        <button class="legend-close-btn" aria-label="Fermer" id="legend-close-btn"><i data-lucide="x" width="18" height="18"></i></button>
       </div>
       <div class="legend-sub">Du plus local au plus haut niveau national.</div>
       <div id="legend-rows"></div>
@@ -804,7 +805,7 @@
     <div class="modal-card">
       <div class="legend-title">
         <span id="profile-modal-title">Connexion</span>
-        <button class="legend-close-btn" id="profile-modal-close"><i data-lucide="x" width="18" height="18"></i></button>
+        <button class="legend-close-btn" id="profile-modal-close" aria-label="Fermer"><i data-lucide="x" width="18" height="18"></i></button>
       </div>
       <div class="profile-note">
         Nécessaire pour signaler ta présence ou discuter avec les autres joueurs.
@@ -819,11 +820,11 @@
       </div>
       <div class="form-group">
         <label class="form-label">Prénom</label>
-        <input class="form-input" id="profile-name-input" placeholder="Ton prénom" maxlength="30">
+        <input class="form-input" id="profile-name-input" aria-label="Prénom" placeholder="Ton prénom" maxlength="30">
       </div>
       <div class="form-group">
         <label class="form-label">Email</label>
-        <input class="form-input" id="profile-email-input" type="email" placeholder="toi@exemple.com" maxlength="80">
+        <input class="form-input" id="profile-email-input" aria-label="Adresse e-mail" type="email" placeholder="toi@exemple.com" maxlength="80">
       </div>
       <label id="profile-consent-row" style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--text-mid);margin:4px 0 10px;cursor:pointer;">
         <input type="checkbox" id="profile-consent" style="margin-top:2px;flex:none;">
@@ -833,7 +834,7 @@
       <div id="profile-otp-row" style="display:none;margin:0 0 12px;">
         <label class="form-label">Code reçu par e-mail</label>
         <div style="display:flex;gap:8px;">
-          <input class="form-input" id="profile-otp-input" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" maxlength="10" style="flex:1;letter-spacing:3px;font-weight:700;">
+          <input class="form-input" id="profile-otp-input" aria-label="Code reçu par e-mail" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" maxlength="10" style="flex:1;letter-spacing:3px;font-weight:700;">
           <button class="gps-btn" id="profile-otp-go" style="flex:none;width:auto;padding:0 14px;margin:0;">Valider</button>
         </div>
         <div style="font-size:11.5px;color:var(--text-low);margin-top:6px;">Tape le code de l'e-mail, ou clique sur le bouton « Me connecter » de l'e-mail (sur cet appareil). Seul le dernier e-mail reçu est valable.</div>
@@ -847,7 +848,7 @@
     <div class="modal-card" style="max-width:420px;">
       <div class="legend-title">
         <span id="clubadmin-title">Fiche du club</span>
-        <button class="legend-close-btn" id="clubadmin-close"><i data-lucide="x" width="18" height="18"></i></button>
+        <button class="legend-close-btn" id="clubadmin-close" aria-label="Fermer"><i data-lucide="x" width="18" height="18"></i></button>
       </div>
       <div id="clubadmin-body" class="club-form"></div>
     </div>
@@ -858,7 +859,7 @@
     <div class="modal-card" style="max-width:400px;">
       <div class="legend-title">
         <span id="legal-title">Confidentialité & mentions légales</span>
-        <button class="legend-close-btn" id="legal-close"><i data-lucide="x" width="18" height="18"></i></button>
+        <button class="legend-close-btn" id="legal-close" aria-label="Fermer"><i data-lucide="x" width="18" height="18"></i></button>
       </div>
       <div class="legal-text" id="legal-text" style="font-size:12.5px;line-height:1.5;color:var(--text-mid);"></div>
     </div>
@@ -869,16 +870,16 @@
     <div class="modal-card">
       <div class="legend-title">
         Proposer une session
-        <button class="legend-close-btn" id="session-create-close"><i data-lucide="x" width="18" height="18"></i></button>
+        <button class="legend-close-btn" id="session-create-close" aria-label="Fermer"><i data-lucide="x" width="18" height="18"></i></button>
       </div>
       <div class="profile-note" id="session-create-spotname">Sur ce spot</div>
       <div class="form-group">
         <label class="form-label">Date</label>
-        <input class="form-input" id="session-date-input" type="date">
+        <input class="form-input" id="session-date-input" aria-label="Date de la session" type="date">
       </div>
       <div class="form-group">
         <label class="form-label">Heure</label>
-        <input class="form-input" id="session-time-input" type="time">
+        <input class="form-input" id="session-time-input" aria-label="Heure de la session" type="time">
       </div>
       <div id="session-create-error"></div>
       <button class="submit-btn" id="session-create-confirm"><i data-lucide="calendar-plus" width="16" height="16"></i> Créer la session</button>
@@ -916,12 +917,12 @@
           <div class="chat-header-title" id="chat-spot-name">Discussion</div>
           <div class="chat-header-sub" id="chat-spot-sub">Visible par tous les joueurs de ce spot</div>
         </div>
-        <button class="chat-close-btn" id="chat-close-btn"><i data-lucide="x" width="20" height="20"></i></button>
+        <button class="chat-close-btn" id="chat-close-btn" aria-label="Fermer le chat"><i data-lucide="x" width="20" height="20"></i></button>
       </div>
       <div id="chat-messages"></div>
       <div class="chat-input-row">
-        <input id="chat-input" placeholder="Écrire un message…" autocomplete="off" maxlength="300">
-        <button class="chat-send-btn" id="chat-send-btn"><i data-lucide="send" width="18" height="18"></i></button>
+        <input id="chat-input" aria-label="Ton message" placeholder="Écrire un message…" autocomplete="off" maxlength="300">
+        <button class="chat-send-btn" id="chat-send-btn" aria-label="Envoyer le message"><i data-lucide="send" width="18" height="18"></i></button>
       </div>
     </div>
   </div>
@@ -930,7 +931,7 @@
   <div id="bottom-nav">
     <button class="nav-btn active" data-view="map"><i data-lucide="map" width="20" height="20"></i>Carte</button>
     <button class="nav-btn" data-view="clubs"><i data-lucide="shield-half" width="20" height="20"></i>Clubs</button>
-    <button class="nav-btn" data-view="add"><div class="fab"><i data-lucide="plus" width="22" height="22"></i></div></button>
+    <button class="nav-btn" data-view="add" aria-label="Ajouter un terrain"><div class="fab"><i data-lucide="plus" width="22" height="22"></i></div></button>
     <button class="nav-btn" data-view="favorites"><i data-lucide="star" width="20" height="20"></i>Favoris</button>
     <button class="nav-btn" data-view="profile"><i data-lucide="user" width="20" height="20"></i>Profil</button>
   </div>
@@ -2112,15 +2113,14 @@ async function runGeocodeQueue(){
 
       done++;
       if(done % 40 === 0 || done === keys.length){
-        bannerText.textContent = `Localisation des terrains et clubs… ${done}/${keys.length}`;
+        bannerText.textContent = 'Chargement de la carte…';
       }
     }
   }
 
   await Promise.all(Array.from({length:CONCURRENCY}, worker));
   renderMarkers();
-  bannerText.textContent = `${keys.length} lieux localisés (${fromCache} depuis le cache)`;
-  setTimeout(()=> banner.classList.remove('show'), 2200);
+  banner.classList.remove('show');
 }
 runGeocodeQueue();
 
@@ -2232,28 +2232,49 @@ document.getElementById('depfilter-back').addEventListener('click', ()=> switchV
 document.getElementById('btn-loc-filter').addEventListener('click', ()=> openDepRegionView());
 
 /* Search: matches spot/club/gym names, cities and postcodes, with a live suggestion list */
+/* Recherche par mots : chaque mot doit se retrouver dans le nom, la ville, le code postal,
+   le type ou les catégories (dans n'importe quel ordre). « st » = saint, « beach » = terrain
+   de sable, les mots trop génériques (club, volley, de…) ne sont pas exigés. */
+const SEARCH_ALIAS = { st:'saint', ste:'sainte' };
+const SEARCH_SOFT = new Set(['club','clubs','volley','volleyball','ball','vb','de','du','des','la','le','les','d','l','a','au','aux','en','et','sur','pres','pour','un','une','terrain','terrains']);
+const SEARCH_TYPES = { beach:'sable', sable:'sable', plage:'sable', green:'herbe', herbe:'herbe', gazon:'herbe', street:'bitume', bitume:'bitume', urbain:'bitume', gymnase:'gymnase', gymnases:'gymnase', salle:'gymnase', salles:'gymnase' };
+function searchTokens(raw){
+  const all = norm(raw).replace(/[-'’.,/()]+/g,' ').split(/\s+/).filter(Boolean).map(t=>SEARCH_ALIAS[t]||t);
+  const hard = all.filter(t=>!SEARCH_SOFT.has(t));
+  return hard.length ? hard : all;
+}
+function searchHay(){ return (' ' + norm(Array.from(arguments).filter(Boolean).join(' ')).replace(/[-'’.,/()]+/g,' ').replace(/\s+/g,' ') + ' ').replace(/ st /g,' saint ').replace(/ ste /g,' sainte '); }
+function tokenHit(h, t){ return h.includes(' ' + t) || (t.length >= 4 && h.includes(t)); }
+function clubHay(c){
+  const labels = pouleLabels(c.categories);
+  return searchHay(c.name, c.city, c.postcode, c.dep, c.homeGym && c.homeGym.name, c.homeGym && c.homeGym.city,
+    labels.join(' '), labels.map(l=>l.replace(/\s+/g,'')).join(' '), (c.categories||[]).join(' '));
+}
+function spotHay(s){
+  const meta = SURFACE_META[s.type_surface] || {};
+  return searchHay(s.name, s.city, s.postcode, s.equip_label, meta.label);
+}
+function clubMatchesTokens(c, toks){ const h = clubHay(c); return toks.every(t=>tokenHit(h, t)); }
+function spotMatchesTokens(s, toks){ const h = spotHay(s); return toks.every(t=> SEARCH_TYPES[t] === s.type_surface || tokenHit(h, t)); }
 function searchCandidates(q){
-  const matches = (v)=> v && norm(v).includes(q);
+  const toks = searchTokens(q);
+  if(!toks.length) return [];
   const results = [];
+  const nameHit = (name)=>{ const h = searchHay(name); return toks.every(t=>tokenHit(h, t) || SEARCH_TYPES[t]); };
+  const dist = (o)=> USER_POS && o.latitude!=null ? distKm(USER_POS.lat, USER_POS.lon, o.latitude, o.longitude) : 9999;
   spots.forEach(s=>{
-    if(s.latitude==null) return;
-    if(matches(s.name) || matches(s.city) || matches(s.postcode)){
-      const meta = SURFACE_META[s.type_surface];
-      results.push({ kind:'spot', ref:s, label:s.name, sub:s.city, emoji:meta.emoji,
-        priority: norm(s.name).startsWith(q) ? 0 : 1 });
-    }
+    if(s.latitude==null || !spotMatchesTokens(s, toks)) return;
+    const meta = SURFACE_META[s.type_surface] || {};
+    results.push({ kind:'spot', ref:s, label:s.name, sub:[s.city, s.type_surface!=='gymnase' ? meta.label : ''].filter(Boolean).join(' · '), emoji:meta.emoji,
+      priority: (nameHit(s.name) ? 0 : 1) + (s.type_surface==='gymnase' ? 0.4 : 0.2), d: dist(s) });
   });
   clubs.forEach(c=>{
-    if(c.latitude==null) return;
-    const catMatch = pouleLabels(c.categories).some(l=>matches(l)) || (c.categories||[]).some(code=>matches(code));
-    if(matches(c.name) || matches(c.city) || matches(c.postcode) || catMatch){
-      results.push({ kind:'club', ref:c, label:c.name,
-        sub: catMatch && !matches(c.name) && !matches(c.city) ? `${c.city} · ${pouleLabels(c.categories).find(l=>l.toLowerCase().includes(q)) || ''}` : c.city,
-        emoji:'🏐', priority: norm(c.name).startsWith(q) ? 0 : (catMatch ? 1.5 : 1) });
-    }
+    if(c.latitude==null || !clubMatchesTokens(c, toks)) return;
+    results.push({ kind:'club', ref:c, label:c.name, sub:c.city, emoji:'🏐',
+      priority: nameHit(c.name) ? 0 : 1, d: dist(c) });
   });
-  results.sort((a,b)=> a.priority - b.priority);
-  return results.slice(0, 7);
+  results.sort((a,b)=> (a.priority - b.priority) || (a.d - b.d));
+  return results.slice(0, 8);
 }
 
 function renderSearchResults(list){
@@ -2304,6 +2325,7 @@ function geolocate(fly){
   if(!navigator.geolocation){ showToast('Géolocalisation indisponible', 'alert-triangle'); return; }
   navigator.geolocation.getCurrentPosition(pos=>{
     const { latitude, longitude } = pos.coords;
+    setUserPos(latitude, longitude);
     if(fly) map.flyTo([latitude, longitude], 13, { duration:0.9 });
     L.circleMarker([latitude, longitude], {
       radius:7, color:'#84CC16', weight:2, fillColor:'#84CC16', fillOpacity:0.7
@@ -2311,6 +2333,7 @@ function geolocate(fly){
   }, ()=> showToast('Position indisponible', 'alert-triangle'));
 }
 document.getElementById('btn-geoloc').addEventListener('click', ()=>geolocate(true));
+document.getElementById('clubs-near-btn').addEventListener('click', ()=> sortClubsNear(!(clubSortNear && USER_POS)));
 document.getElementById('btn-myloc').addEventListener('click', ()=>geolocate(true));
 
 /* ===================== BOTTOM SHEET ===================== */
@@ -3311,33 +3334,68 @@ function clubMatchesGenderFilter(c, filterVal){
 
 const CLUBS_PAGE_SIZE = 40;
 let clubsShown = CLUBS_PAGE_SIZE;
+/* ===================== CLUBS LES PLUS PROCHES ===================== */
+let USER_POS = null;
+try{ USER_POS = JSON.parse(sessionStorage.getItem('vs_pos') || 'null'); }catch(e){ USER_POS = null; }
+let clubSortNear = false;
+function setUserPos(lat, lon){ USER_POS = { lat, lon }; try{ sessionStorage.setItem('vs_pos', JSON.stringify(USER_POS)); }catch(e){} }
+function distKm(lat1, lon1, lat2, lon2){
+  const R = 6371, toR = x=>x*Math.PI/180;
+  const dLat = toR(lat2-lat1), dLon = toR(lon2-lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toR(lat1))*Math.cos(toR(lat2))*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a));
+}
+function fmtKm(k){ return k < 1 ? (Math.max(50, Math.round(k*1000/50)*50) + ' m') : (k < 10 ? k.toFixed(1).replace('.', ',') : Math.round(k)) + ' km'; }
+function askPosition(cb){
+  if(!navigator.geolocation){ cb(false); return; }
+  navigator.geolocation.getCurrentPosition(pos=>{ setUserPos(pos.coords.latitude, pos.coords.longitude); cb(true); },
+    ()=> cb(false), { timeout:9000, maximumAge:600000, enableHighAccuracy:false });
+}
+function sortClubsNear(on){
+  const go = ()=>{ clubSortNear = true; renderClubs(); const l = document.getElementById('clubs-list'); if(l) l.scrollTop = 0; };
+  if(!on){ clubSortNear = false; renderClubs(); return; }
+  if(USER_POS){ go(); return; }
+  const btn = document.getElementById('clubs-near-btn'); if(btn) btn.textContent = 'Localisation…';
+  askPosition(ok=>{
+    if(ok) go();
+    else { renderClubs(); showToast('Autorise la localisation pour voir les clubs proches', 'map-pin'); }
+  });
+}
 function clubMatchesText(c, raw){
   const q = norm(raw.trim());
   if(!q) return true;
   /* Chip de catégorie rapide -> correspondance exacte sur la catégorie. */
   if(QUICK_CATS.includes(raw)) return clubMatchesCategory(c, raw);
-  const labels = pouleLabels(c.categories);
-  return labels.some(l=>norm(l).includes(q))
-    || (c.categories||[]).some(code=>norm(code).includes(q))
-    || norm(c.name).includes(q) || norm(c.city).includes(q)
-    || (c.postcode && String(c.postcode).startsWith(q))
-    || (c.homeGym && norm(c.homeGym.name+' '+c.homeGym.city).includes(q));
+  return clubMatchesTokens(c, searchTokens(raw));
 }
 function renderClubs(keepPage){
   if(!keepPage) clubsShown = CLUBS_PAGE_SIZE;
   renderClubFilters();
   const list = document.getElementById('clubs-list');
-  const filtered = clubs.filter(c =>
+  let filtered = clubs.filter(c =>
     (clubDepFilter==='Tous' || c.dep===clubDepFilter) &&
     clubMatchesGenderFilter(c, clubGenderFilter) &&
     clubMatchesText(c, clubCategorySearch)
   );
+  const near = clubSortNear && USER_POS;
+  if(near){
+    filtered.forEach(c=>{ c._d = c.latitude!=null ? distKm(USER_POS.lat, USER_POS.lon, c.latitude, c.longitude) : null; });
+    filtered = filtered.slice().sort((a,b)=> (a._d==null) - (b._d==null) || (a._d - b._d));
+  }
+  const nearBtn = document.getElementById('clubs-near-btn');
+  if(nearBtn){
+    nearBtn.classList.toggle('active', !!near);
+    nearBtn.setAttribute('aria-pressed', near ? 'true' : 'false');
+    nearBtn.innerHTML = near ? '<i data-lucide="navigation" width="14" height="14"></i> Triés par distance ✕' : '<i data-lucide="navigation" width="14" height="14"></i> Clubs près de moi';
+  }
   const subEl = document.getElementById('clubs-page-sub');
   if(subEl){
     const nDeps = new Set(clubs.map(c=>c.dep)).size;
-    subEl.textContent = filtered.length === clubs.length
-      ? `${clubs.length} clubs FFVolley · ${nDeps} départements · trouve ton équipe.`
-      : `${filtered.length} club${filtered.length>1?'s':''} sur ${clubs.length}`;
+    subEl.textContent = near
+      ? `Les clubs les plus proches de toi en premier · ${filtered.length} club${filtered.length>1?'s':''}`
+      : (filtered.length === clubs.length
+        ? `${clubs.length} clubs FFVolley · ${nDeps} départements · trouve ton équipe.`
+        : `${filtered.length} club${filtered.length>1?'s':''} sur ${clubs.length}`);
   }
   if(!filtered.length){
     list.innerHTML = `<div class="empty-state"><div class="icon-wrap"><i data-lucide="search-x" width="24" height="24"></i></div><div class="t">Aucun club trouvé</div>Essaie un autre filtre ou une autre catégorie.</div>`;
@@ -3359,6 +3417,7 @@ function renderClubs(keepPage){
         <div class="club-cert"><i data-lucide="badge-check" width="12" height="12"></i>FFVolley</div>
       </div>
       <div class="club-tag-row">
+        ${near && c._d!=null ? `<div class="dep-pill" style="background:var(--accent-2);color:#fff;border-color:var(--accent-2);">à ${fmtKm(c._d)}</div>` : ''}
         <div class="dep-pill">Dép. ${c.dep||'—'}</div>
         <div class="gender-pill">${c.gender}</div>
         ${clubRecruitPill(c)}
@@ -4113,6 +4172,7 @@ document.querySelectorAll('.landing-card').forEach(card=>{
          rapide à scanner pour ce cas précis. La carte reste à un tap via
          "Voir sur la carte" sur chaque fiche. */
       switchView('clubs');
+      sortClubsNear(true);
     }else{
       applyCategoryFilter(choice);
     }
