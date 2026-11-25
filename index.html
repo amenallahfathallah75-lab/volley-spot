@@ -753,9 +753,9 @@
     <div class="home-rounds" role="list">
       <button class="home-round" data-home="club" role="listitem"><span class="ring"><span class="disc" style="background:#D2432F">🏐</span></span><span class="lbl">Clubs</span></button>
       <button class="home-round" data-home="sable" role="listitem"><span class="ring"><span class="disc" style="background:#C98A3A">🏖️</span></span><span class="lbl">Beach</span></button>
-      <button class="home-round" data-home="herbe" role="listitem"><span class="ring"><span class="disc" style="background:#1B8A7E">🌿</span></span><span class="lbl">Green</span></button>
-      <button class="home-round" data-home="bitume" role="listitem"><span class="ring"><span class="disc" style="background:#7C5CD6">🏙️</span></span><span class="lbl">Street</span></button>
       <button class="home-round" data-home="tous" role="listitem"><span class="ring"><span class="disc" style="background:#182B2E">🗺️</span></span><span class="lbl">Carte</span></button>
+      <button class="home-round" data-home="bitume" role="listitem"><span class="ring"><span class="disc" style="background:#7C5CD6">🏙️</span></span><span class="lbl">Street</span></button>
+      <button class="home-round" data-home="herbe" role="listitem"><span class="ring"><span class="disc" style="background:#1B8A7E">🌿</span></span><span class="lbl">Green</span></button>
     </div>
     <div class="home-sec-title">Mes clubs &amp; lieux favoris</div>
     <div class="home-tabs" id="home-tabs" role="tablist"></div>
@@ -4383,12 +4383,12 @@ document.querySelectorAll('.landing-card').forEach(card=>{
 });
 
 
-/* ===================== ACCUEIL V2 (essai) =====================
-   Activé par le lien ?accueil=2 (mémorisé sur l'appareil) ; ?accueil=1 revient à l'ancien. */
+/* ===================== ACCUEIL =====================
+   Nouvel accueil par défaut. L'ancien reste accessible avec ?accueil=1 (mémorisé), ?accueil=2 y revient. */
 const HOME_V2 = (()=>{
   const q = new URLSearchParams(location.search).get('accueil');
-  try{ if(q==='2') localStorage.setItem('vs_home_v2','1'); if(q==='1') localStorage.removeItem('vs_home_v2'); return localStorage.getItem('vs_home_v2')==='1'; }
-  catch(e){ return q==='2'; }
+  try{ if(q==='1') localStorage.setItem('vs_home_v1','1'); if(q==='2') localStorage.removeItem('vs_home_v1'); return localStorage.getItem('vs_home_v1')!=='1'; }
+  catch(e){ return q!=='1'; }
 })();
 let homeTab = 'club';
 const HOME_TABS = [
