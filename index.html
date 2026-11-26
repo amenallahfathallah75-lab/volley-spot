@@ -693,6 +693,13 @@
   .tr-row .tr-name{ flex:1; min-width:0; color:var(--text-hi); font-weight:600; }
   .tr-row .tr-lines{ color:var(--text-mid); font-weight:400; font-size:12.5px; }
   .tr-row .tr-dist{ color:var(--text-mid); font-size:12.5px; white-space:nowrap; text-align:right; }
+  .home-install{ display:flex; align-items:center; gap:12px; margin:18px 18px 0; padding:12px 12px 12px 14px; background:#1E3550; color:#fff; border-radius:18px; box-shadow:0 8px 22px rgba(30,53,80,.25); }
+  .home-install[hidden]{ display:none; }
+  .home-install .hi-icon img{ display:block; border-radius:11px; }
+  .home-install .hi-txt{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; font-size:12.5px; line-height:1.3; color:rgba(255,255,255,.82); }
+  .home-install .hi-txt b{ color:#fff; font-size:14.5px; }
+  .home-install .hi-go{ flex:none; border:none; border-radius:12px; background:var(--accent); color:#fff; font-weight:700; font-size:14px; padding:10px 14px; cursor:pointer; }
+  .home-install .hi-x{ flex:none; width:30px; height:30px; border:none; border-radius:50%; background:rgba(255,255,255,.12); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -773,6 +780,12 @@
       <div class="home-logo"><div class="brand-mark" style="width:100%;height:100%;font-size:52px;border-radius:22px;">🏐</div></div>
       <div class="home-id-txt"><div class="home-name">Volley<span>Spot</span></div><div class="home-tag">Clubs et terrains près de chez toi</div></div>
       <button class="home-info" id="home-info" aria-label="À propos de VolleySpot"><i data-lucide="info" width="20" height="20"></i></button>
+    </div>
+    <div class="home-install" id="home-install" hidden>
+      <div class="hi-icon"><img src="icons/icon-192.png" alt="" width="44" height="44"></div>
+      <div class="hi-txt"><b>Installe VolleySpot</b><span>Sur ton écran d'accueil, en un geste, et tu restes connecté.</span></div>
+      <button class="hi-go" id="home-install-go">Installer</button>
+      <button class="hi-x" id="home-install-x" aria-label="Masquer"><i data-lucide="x" width="16" height="16"></i></button>
     </div>
     <div class="home-rounds" role="list">
       <button class="home-round" data-home="club" role="listitem"><span class="ring"><span class="disc" style="background:#D2432F">🏐</span></span><span class="lbl">Clubs</span></button>
@@ -3621,6 +3634,42 @@ async function addNearbyTransport(obj){
       <div class="tr-dist">${fmtKm(st.d)}<br>${min} min à pied</div></div>`;
   }).join('') + `<div style="color:var(--text-low);font-size:11px;margin-top:6px;">Données © OpenStreetMap</div>`;
 }
+
+
+/* ===================== INSTALLER L'APPLI (PWA) =====================
+   Android / Chrome : vraie fenêtre d'installation. iPhone / iPad (Safari) : mode d'emploi.
+   Masqué si l'appli est déjà installée, ou pendant 30 jours après « ✕ ». */
+(function(){
+  const box = document.getElementById('home-install'); if(!box) return;
+  const standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  let dismissedUntil = 0; try{ dismissedUntil = +localStorage.getItem('vs_install_x') || 0; }catch(e){}
+  if(standalone || Date.now() < dismissedUntil) return;
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  let deferred = null;
+  const show = ()=>{ box.hidden = false; refreshIcons(); };
+  window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); deferred = e; show(); });
+  window.addEventListener('appinstalled', ()=>{ box.hidden = true; deferred = null; showToast('VolleySpot est installé sur ton téléphone', 'check'); });
+  if(isIOS) show();
+  document.getElementById('home-install-x').addEventListener('click', ()=>{
+    box.hidden = true; try{ localStorage.setItem('vs_install_x', String(Date.now() + 30*864e5)); }catch(e){}
+  });
+  document.getElementById('home-install-go').addEventListener('click', async ()=>{
+    if(deferred){
+      deferred.prompt();
+      try{ const r = await deferred.userChoice; if(r && r.outcome === 'accepted') box.hidden = true; }catch(e){}
+      deferred = null; return;
+    }
+    openClubAdmin('Installer VolleySpot', `
+      <div class="profile-note" style="font-size:14px;line-height:1.55;">
+        <p style="margin:0 0 10px;"><b>Sur iPhone ou iPad (Safari) :</b></p>
+        <p style="margin:0 0 8px;">1. Touche le bouton <b>Partager</b> <span aria-hidden="true">⬆️</span> en bas de l'écran (en haut sur iPad).</p>
+        <p style="margin:0 0 8px;">2. Fais défiler et choisis <b>« Sur l'écran d'accueil »</b>.</p>
+        <p style="margin:0 0 14px;">3. Touche <b>Ajouter</b> : l'icône VolleySpot apparaît avec tes applis.</p>
+        <p style="margin:0;color:var(--text-mid);">Ouvre ensuite VolleySpot depuis cette icône : tu restes connecté durablement.</p>
+      </div>`);
+  });
+})();
 
 /* ===================== CLUBS LES PLUS PROCHES ===================== */
 let USER_POS = null;
