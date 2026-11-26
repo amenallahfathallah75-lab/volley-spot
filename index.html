@@ -4127,6 +4127,7 @@ function openClaimForm(club){
     const { error } = await sb.from('club_claims').insert({ club_id: rawClubId(club), role, message, contact_email });
     if(error){ document.getElementById('claim-err').textContent = /duplicate|unique/i.test(error.message) ? 'Tu as déjà fait une demande pour ce club.' : 'Envoi impossible : ' + error.message; return; }
     MY_CLAIMS[rawClubId(club)] = 'pending'; trackEvent('claim');
+    try{ sb.functions.invoke('notify-claim', { body:{ clubName: club.name } }).catch(()=>{}); }catch(e){}
     closeClubAdmin(); showToast('Demande envoyée, merci !', 'check-circle'); openClubFromMap(club);
   });
 }
