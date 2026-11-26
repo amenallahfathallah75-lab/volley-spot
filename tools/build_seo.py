@@ -68,7 +68,8 @@ def build(data):
         body = f"""<h1>{E(c['name'])}</h1><p class="sub">Club de volley-ball à {E(c['city'])}{(' (' + E(c['postcode']) + ')') if c['postcode'] else ''}{(' · ' + dep_link) if dep_link else ''}</p>
 <div class="card"><b>Catégories et championnats</b><br>{cats}<br><span class="pill">{E(c['gender'])}</span>{('<span class="pill">Couleurs : ' + E(c['colors']) + '</span>') if c['colors'] else ''}</div>
 <div class="card"><b>Où jouer</b>{('<ul>' + gyms + '</ul>') if gyms else '<p>Salle non renseignée par la fédération.</p>'}</div>
-<a class="cta" href="{app}">Voir sur la carte et contacter le club</a>"""
+<a class="cta" href="{app}">Voir sur la carte et contacter le club</a>
+<div class="card" style="margin-top:22px"><b>Vous gérez ce club ?</b><br>Ajoutez gratuitement votre logo, vos horaires d'entraînement et vos tarifs pour attirer de nouveaux joueurs.<br><a href="{app}&amp;gerer=1">Compléter la fiche du club</a> · <a href="../espace-clubs.html">En savoir plus</a></div>"""
         canon = BASE + 'club/' + c['slug'] + '.html'
         ld = {"@context": "https://schema.org", "@type": "SportsOrganization", "name": c['name'], "sport": "Volleyball", "url": canon,
               "address": {"@type": "PostalAddress", "addressLocality": c['city'], "postalCode": c['postcode'] or None, "addressCountry": "FR"}}
@@ -84,9 +85,10 @@ def build(data):
         open(os.path.join(ROOT, 'clubs', dslug(dep) + '.html'), 'w', encoding='utf-8').write(page(f'Clubs de volley — {name} ({dep})', f'Les {len(cl)} clubs de volley-ball affiliés FFVolley en {name} : salles, catégories, contact.', canon, body)); urls.append(canon)
     idx = ''.join(f'<li><a href="{dslug(d)}.html">{E(cl[0]["depLabel"])}</a> ({len(cl)})</li>' for d, cl in deps if d)
     open(os.path.join(ROOT, 'clubs', 'index.html'), 'w', encoding='utf-8').write(page('Tous les clubs de volley en France par département', f'{len(data)} clubs de volley-ball affiliés FFVolley, classés par département.', BASE + 'clubs/', f'<h1>Clubs de volley par département</h1><p class="sub">{len(data)} clubs</p><div class="card"><ul>{idx}</ul></div>'))
-    urls = [BASE, BASE + 'clubs/'] + urls
+    open(os.path.join(ROOT, 'clubs', 'liste.json'), 'w', encoding='utf-8').write(json.dumps([[c['id'], c['name'], (c['city'] or '') + (' (' + c['dep'] + ')' if c['dep'] else '')] for c in data if not str(c['id']).startswith('999')], ensure_ascii=False, separators=(',', ':')))
+    urls = [BASE, BASE + 'espace-clubs.html', BASE + 'clubs/'] + urls + [BASE + 'confidentialite.html', BASE + 'cgu.html']
     open(os.path.join(ROOT, 'sitemap.xml'), 'w').write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + ''.join(f'<url><loc>{u}</loc></url>\n' for u in urls) + '</urlset>\n')
-    open(os.path.join(ROOT, 'robots.txt'), 'w').write(f'User-agent: *\nAllow: /\nSitemap: {BASE}sitemap.xml\n')
+    open(os.path.join(ROOT, 'robots.txt'), 'w').write(f'User-agent: *\nAllow: /\nSitemap: {BASE}sitemap.xml\nDisallow: /design/\n')
     print(len(data), 'clubs,', len(urls), 'URLs')
 if __name__ == '__main__':
     build(asyncio.run(dump()))

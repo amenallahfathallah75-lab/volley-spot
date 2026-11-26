@@ -694,6 +694,15 @@
   .tr-row .tr-name{ flex:1; min-width:0; color:var(--text-hi); font-weight:600; }
   .tr-row .tr-lines{ color:var(--text-mid); font-weight:400; font-size:12.5px; }
   .tr-row .tr-dist{ color:var(--text-mid); font-size:12.5px; white-space:nowrap; text-align:right; }
+  .home-club-cta{ display:flex; align-items:center; gap:12px; margin:22px 18px 0; padding:14px; border-radius:18px; background:#FFF6EE; border:1px solid #F3D9C4; color:var(--text-hi); text-decoration:none; }
+  .home-club-cta .hc-ic{ flex:none; width:42px; height:42px; border-radius:12px; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; }
+  .home-club-cta .hc-txt{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; font-size:12.5px; line-height:1.35; color:var(--text-mid); }
+  .home-club-cta .hc-txt b{ font-size:14.5px; color:var(--text-hi); }
+  .verified-pill{ display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:700; padding:4px 9px; border-radius:8px; background:rgba(30,100,200,0.10); color:#1E5FB4; }
+  .cd-logo-row{ display:flex; align-items:center; gap:12px; margin-top:6px; }
+  .cd-logo-prev{ width:64px; height:64px; border-radius:14px; border:1px solid var(--line); background:#fff center/contain no-repeat; flex:none; }
+  .cd-progress{ height:8px; border-radius:6px; background:var(--line); overflow:hidden; margin:6px 0 2px; }
+  .cd-progress > i{ display:block; height:100%; background:var(--accent-2); border-radius:6px; transition:width .3s; }
   .home-install{ display:flex; align-items:center; gap:12px; margin:18px 18px 0; padding:12px 12px 12px 14px; background:#1E3550; color:#fff; border-radius:18px; box-shadow:0 8px 22px rgba(30,53,80,.25); }
   .home-install[hidden]{ display:none; }
   .home-install .hi-icon img{ display:block; border-radius:11px; }
@@ -805,6 +814,11 @@
     <div class="home-sec-title">Mes clubs &amp; lieux favoris</div>
     <div class="home-tabs" id="home-tabs" role="tablist"></div>
     <div class="home-fav-list" id="home-fav-list"></div>
+    <a class="home-club-cta" href="espace-clubs.html">
+      <span class="hc-ic"><i data-lucide="badge-check" width="22" height="22"></i></span>
+      <span class="hc-txt"><b>Vous gérez un club ?</b><span>Ajoutez gratuitement votre logo, vos horaires et vos tarifs pour attirer de nouveaux joueurs.</span></span>
+      <i data-lucide="chevron-right" width="18" height="18"></i>
+    </a>
     <div style="height:30px"></div>
   </div>
   <!-- ===================== MAP VIEW ===================== -->
@@ -3989,6 +4003,7 @@ async function loadClubDetails(){
   try{
     const { data } = await sb.from('club_details').select('*');
     CLUB_DETAILS = {}; (data||[]).forEach(d=>{ CLUB_DETAILS['club_'+d.club_id] = d; });
+    applyClubDetailLogos();
     if(document.getElementById('view-clubs').classList.contains('active')) renderClubs(true);
   }catch(e){}
 }
@@ -4001,9 +4016,25 @@ async function loadMyClaims(){
     if(IS_ADMIN) refreshEsSnapshot(false);
   }catch(e){}
 }
+/* Logo envoyé par le club : il remplace celui de l'annuaire. */
+function applyClubDetailLogos(){
+  let changed = false;
+  Object.entries(CLUB_DETAILS).forEach(([id,d])=>{
+    if(!d || !d.logo || !/^data:image\//.test(d.logo)) return;
+    const c = clubs.find(x=>x.id===id); if(c && c.logo !== d.logo){ c.logo = d.logo; changed = true; }
+  });
+  if(changed && typeof renderMarkers === 'function'){ try{ renderMarkers(); }catch(e){} }
+}
+/* Part de la fiche complétée par le club (pour l'encourager à tout remplir). */
+const CD_FIELDS = [['logo','Logo'],['description','Présentation'],['schedule','Horaires'],['price','Tarif'],['age_groups','Catégories'],['contact_email','Email de contact'],['website','Site ou réseau social']];
+function clubCompletion(d){
+  d = d || {};
+  const ok = CD_FIELDS.filter(([k])=> k==='website' ? (d.website||d.instagram||d.facebook) : d[k]);
+  return { pct: Math.round(100*ok.length/CD_FIELDS.length), missing: CD_FIELDS.filter(f=>!ok.includes(f)).map(f=>f[1]) };
+}
 function clubRecruitPill(c){
   const d = CLUB_DETAILS[c.id]; if(!d) return '';
-  return (d.recruiting ? `<div class="recruit-pill">Recrute</div>` : '') + (d.trial ? `<div class="recruit-pill">Essai gratuit</div>` : '');
+  return `<div class="verified-pill" title="Fiche complétée par le club"><i data-lucide="badge-check" width="12" height="12"></i>Vérifié</div>` + (d.recruiting ? `<div class="recruit-pill">Recrute</div>` : '') + (d.trial ? `<div class="recruit-pill">Essai gratuit</div>` : '');
 }
 function clubDetailsHTML(club){
   if(!SB_ON) return '';
@@ -4014,7 +4045,7 @@ function clubDetailsHTML(club){
     const links = [['website','globe','Site web'],['instagram','instagram','Instagram'],['facebook','facebook','Facebook']]
       .map(([k,ic,lbl])=>{ const u = safeUrl(d[k]); return u ? `<a href="${esc(u)}" target="_blank" rel="noopener" class="badge" style="text-decoration:none;"><i data-lucide="${ic}" width="13" height="13"></i> ${lbl}</a>` : ''; }).join('');
     html += `<div class="module club-extra">
-      <div class="module-title"><i data-lucide="badge-check" width="14" height="14"></i> Infos renseignées par le club</div>
+      <div class="module-title"><i data-lucide="badge-check" width="14" height="14" style="color:#1E5FB4"></i> Fiche vérifiée · infos données par le club</div>
       <div class="badge-row" style="margin-top:0;">${d.recruiting ? `<div class="badge pos"><i data-lucide="user-plus" width="13" height="13"></i> Recrute</div>` : ''}${d.trial ? `<div class="badge pos"><i data-lucide="check" width="13" height="13"></i> Essai gratuit</div>` : ''}</div>
       <div class="practical-row" style="margin-top:10px;">
         ${d.recruiting && d.recruiting_note ? `<div class="line"><i data-lucide="megaphone" width="13" height="13"></i><span>${esc(d.recruiting_note)}</span></div>` : ''}
@@ -4022,13 +4053,21 @@ function clubDetailsHTML(club){
         ${d.schedule ? `<div class="line"><i data-lucide="clock" width="13" height="13"></i><span class="pre"><b>Entraînements</b>\n${esc(d.schedule)}</span></div>` : ''}
         ${d.age_groups ? `<div class="line"><i data-lucide="users" width="13" height="13"></i><span><b>Catégories d'âge :</b> ${esc(d.age_groups)}</span></div>` : ''}
         ${d.price ? `<div class="line"><i data-lucide="euro" width="13" height="13"></i><span><b>Licence :</b> ${esc(d.price)}</span></div>` : ''}
+        ${d.venue_note ? `<div class="line"><i data-lucide="map-pin" width="13" height="13"></i><span class="pre"><b>Accès</b>\n${esc(d.venue_note)}</span></div>` : ''}
+        ${d.contact_email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.contact_email) ? `<div class="line"><i data-lucide="mail" width="13" height="13"></i><span><a href="mailto:${esc(d.contact_email)}">${esc(d.contact_email)}</a></span></div>` : ''}
+        ${d.contact_phone ? `<div class="line"><i data-lucide="phone" width="13" height="13"></i><span><a href="tel:${esc(d.contact_phone.replace(/[^\d+]/g,''))}">${esc(d.contact_phone)}</a></span></div>` : ''}
       </div>
       ${links ? `<div class="badge-row">${links}</div>` : ''}
     </div>`;
   }
-  if(st === 'approved' || IS_ADMIN) html += `<button class="club-manage-btn" id="club-edit-btn"><i data-lucide="pencil" width="14" height="14" style="vertical-align:-2px"></i> Modifier la fiche du club</button>`;
-  else if(st === 'pending') html += `<div class="profile-note" style="margin-top:12px;text-align:center;">Ta demande de gestion est en cours de vérification.</div>`;
-  else html += `<button class="club-manage-btn" id="club-claim-btn">Vous gérez ce club ? Complétez sa fiche</button>`;
+  if(st === 'approved' || IS_ADMIN){
+    const cp = clubCompletion(d);
+    html += `<button class="club-manage-btn" id="club-edit-btn"><i data-lucide="pencil" width="14" height="14" style="vertical-align:-2px"></i> Modifier la fiche du club${cp.pct<100 ? ` · complétée à ${cp.pct} %` : ''}</button>`;
+  }
+  else if(st === 'pending') html += `<div class="profile-note" style="margin-top:12px;text-align:center;">Ta demande de gestion est en cours de vérification (en général sous 48 h).</div>`;
+  else if(!d) html += `<button class="club-manage-btn" id="club-claim-btn"><i data-lucide="badge-check" width="14" height="14" style="vertical-align:-2px"></i> Vous gérez ce club ? Complétez sa fiche gratuitement</button>
+    <div style="text-align:center;font-size:12px;color:var(--text-mid);margin-top:6px;">Logo, horaires, tarifs, recrutement : les joueurs vous trouvent plus facilement.</div>`;
+  else html += `<button class="club-manage-btn" id="club-claim-btn" style="opacity:.75">Vous faites partie du club ? Demandez l'accès</button>`;
   return html;
 }
 function openClubAdmin(title, bodyHTML){
@@ -4053,13 +4092,16 @@ function openClaimForm(club){
     <select class="form-select" id="claim-role"><option>Président(e)</option><option>Secrétaire</option><option>Entraîneur</option><option>Bénévole / autre</option></select>
     <label>Comment pouvons-nous vérifier ? <span style="font-weight:400">(email officiel du club, site, numéro d'affiliation…)</span></label>
     <textarea id="claim-msg" maxlength="500"></textarea>
+    <label>Email pour te recontacter <span style="font-weight:400">(de préférence celui du club)</span></label>
+    <input class="form-input" id="claim-email" type="email" maxlength="110" value="${esc((myProfile && myProfile.email) || '')}">
     <div id="claim-err" style="color:var(--danger);font-size:12px;min-height:14px;margin-top:6px;"></div>
     <button class="submit-btn" id="claim-send">Envoyer ma demande</button>`);
   document.getElementById('claim-send').addEventListener('click', async ()=>{
     const role = document.getElementById('claim-role').value;
     const message = document.getElementById('claim-msg').value.trim();
     if(message.length < 5){ document.getElementById('claim-err').textContent = 'Explique en quelques mots comment vérifier.'; return; }
-    const { error } = await sb.from('club_claims').insert({ club_id: rawClubId(club), role, message });
+    const contact_email = (document.getElementById('claim-email').value || '').trim().slice(0,110) || null;
+    const { error } = await sb.from('club_claims').insert({ club_id: rawClubId(club), role, message, contact_email });
     if(error){ document.getElementById('claim-err').textContent = /duplicate|unique/i.test(error.message) ? 'Tu as déjà fait une demande pour ce club.' : 'Envoi impossible : ' + error.message; return; }
     MY_CLAIMS[rawClubId(club)] = 'pending';
     closeClubAdmin(); showToast('Demande envoyée, merci !', 'check-circle'); openClubFromMap(club);
@@ -4068,7 +4110,19 @@ function openClaimForm(club){
 function openEditForm(club){
   const d = CLUB_DETAILS[club.id] || {};
   const v = k => esc(d[k] || '');
+  const cp0 = clubCompletion(d);
   openClubAdmin('Fiche de ' + club.name, `
+    <div style="font-size:12.5px;color:var(--text-mid)">Fiche complétée à <b id="cd-pct">${cp0.pct} %</b></div>
+    <div class="cd-progress"><i id="cd-bar" style="width:${cp0.pct}%"></i></div>
+    <div id="cd-missing" style="font-size:11.5px;color:var(--text-mid);min-height:14px;">${cp0.missing.length ? 'À compléter : ' + esc(cp0.missing.join(', ')) : 'Bravo, la fiche est complète !'}</div>
+    <label>Logo du club</label>
+    <div class="cd-logo-row">
+      <div class="cd-logo-prev" id="cd-logo-prev" style="${(d.logo||club.logo) ? `background-image:url('${esc(d.logo||club.logo)}')` : ''}"></div>
+      <div style="flex:1;min-width:0;">
+        <input type="file" id="cd-logo-file" accept="image/png,image/jpeg,image/webp" style="font-size:12.5px;max-width:100%;">
+        <div style="font-size:11.5px;color:var(--text-mid);margin-top:4px;">PNG ou JPG, il sera redimensionné automatiquement.${d.logo ? ' <a href="#" id="cd-logo-del">Retirer</a>' : ''}</div>
+      </div>
+    </div>
     <label class="chk"><input type="checkbox" id="cd-recruiting" ${d.recruiting?'checked':''}> Le club recrute</label>
     <label>Précision sur le recrutement</label><input class="form-input" id="cd-recruiting_note" maxlength="150" value="${v('recruiting_note')}" placeholder="ex : on cherche des passeuses pour l'équipe R2 F">
     <label class="chk"><input type="checkbox" id="cd-trial" ${d.trial?'checked':''}> Séance d'essai gratuite</label>
@@ -4076,20 +4130,52 @@ function openEditForm(club){
     <label>Horaires d'entraînement</label><textarea id="cd-schedule" maxlength="800" placeholder="Lundi 20h-22h : seniors M&#10;Mercredi 18h-20h : jeunes">${v('schedule')}</textarea>
     <label>Catégories d'âge</label><input class="form-input" id="cd-age_groups" maxlength="120" value="${v('age_groups')}" placeholder="M13 à seniors, loisirs">
     <label>Prix de la licence</label><input class="form-input" id="cd-price" maxlength="80" value="${v('price')}" placeholder="ex : 150 € / an">
+    <label>Accès / lieu d'entraînement <span style="font-weight:400">(facultatif)</span></label><textarea id="cd-venue_note" maxlength="290" placeholder="ex : Gymnase Jean Moulin, entrée par le parking">${v('venue_note')}</textarea>
+    <label>Email de contact public</label><input class="form-input" id="cd-contact_email" type="email" maxlength="110" value="${v('contact_email')}" placeholder="contact@monclub.fr">
+    <label>Téléphone public <span style="font-weight:400">(facultatif)</span></label><input class="form-input" id="cd-contact_phone" type="tel" maxlength="25" value="${v('contact_phone')}">
+    <div style="font-size:11.5px;color:var(--text-mid);margin-top:4px;">Ces coordonnées seront visibles par tous : préférez l'adresse du club plutôt qu'une adresse personnelle.</div>
     <label>Site web</label><input class="form-input" id="cd-website" maxlength="200" value="${v('website')}">
     <label>Instagram</label><input class="form-input" id="cd-instagram" maxlength="200" value="${v('instagram')}">
     <label>Facebook</label><input class="form-input" id="cd-facebook" maxlength="200" value="${v('facebook')}">
     <div id="cd-err" style="color:var(--danger);font-size:12px;min-height:14px;margin-top:8px;"></div>
     <button class="submit-btn" id="cd-save">Enregistrer la fiche</button>`);
+  let newLogo = d.logo || null;
+  const TXT = ['recruiting_note','description','schedule','age_groups','price','venue_note','contact_email','contact_phone','website','instagram','facebook'];
+  const collect = ()=>{ const r = { logo:newLogo }; TXT.forEach(k=>{ r[k] = document.getElementById('cd-'+k).value.trim() || null; }); return r; };
+  const refreshPct = ()=>{ const cp = clubCompletion(collect());
+    document.getElementById('cd-pct').textContent = cp.pct + ' %'; document.getElementById('cd-bar').style.width = cp.pct + '%';
+    document.getElementById('cd-missing').textContent = cp.missing.length ? 'À compléter : ' + cp.missing.join(', ') : 'Bravo, la fiche est complète !'; };
+  document.getElementById('clubadmin-body').addEventListener('input', refreshPct);
+  const del = document.getElementById('cd-logo-del');
+  if(del) del.addEventListener('click', e=>{ e.preventDefault(); newLogo = null; document.getElementById('cd-logo-prev').style.backgroundImage = ''; refreshPct(); });
+  document.getElementById('cd-logo-file').addEventListener('change', e=>{
+    const f = e.target.files && e.target.files[0]; if(!f) return;
+    if(f.size > 8e6){ document.getElementById('cd-err').textContent = 'Image trop lourde (8 Mo maximum).'; return; }
+    const url = URL.createObjectURL(f), img = new Image();
+    img.onload = ()=>{
+      const S = 256, c = document.createElement('canvas'); c.width = c.height = S;
+      const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0,0,S,S);
+      const k = (S-16)/Math.max(img.naturalWidth, img.naturalHeight), w = img.naturalWidth*k, h = img.naturalHeight*k;
+      g.drawImage(img, (S-w)/2, (S-h)/2, w, h); URL.revokeObjectURL(url);
+      let q = 0.85, out = c.toDataURL('image/webp', q);
+      if(!/^data:image\/webp/.test(out)) out = c.toDataURL('image/jpeg', 0.85);
+      while(out.length > 110000 && q > 0.4){ q -= 0.15; out = c.toDataURL('image/webp', q); }
+      newLogo = out; document.getElementById('cd-logo-prev').style.backgroundImage = `url('${out}')`; document.getElementById('cd-err').textContent = ''; refreshPct();
+    };
+    img.onerror = ()=>{ document.getElementById('cd-err').textContent = 'Image illisible, essaie un PNG ou un JPG.'; };
+    img.src = url;
+  });
   document.getElementById('cd-save').addEventListener('click', async ()=>{
-    const row = { club_id: rawClubId(club) };
-    ['recruiting_note','description','schedule','age_groups','price','website','instagram','facebook'].forEach(k=>{ row[k] = document.getElementById('cd-'+k).value.trim() || null; });
+    const row = Object.assign({ club_id: rawClubId(club) }, collect());
     ['website','instagram','facebook'].forEach(k=>{ if(row[k]) row[k] = safeUrl(row[k]) || null; });
+    if(row.contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.contact_email)){ document.getElementById('cd-err').textContent = 'Adresse email invalide.'; return; }
     row.recruiting = document.getElementById('cd-recruiting').checked;
     row.trial = document.getElementById('cd-trial').checked;
     const { error } = await sb.from('club_details').upsert(row);
     if(error){ document.getElementById('cd-err').textContent = 'Enregistrement impossible : ' + error.message; return; }
     CLUB_DETAILS[club.id] = Object.assign({}, d, row);
+    if(!row.logo){ const base = CLUB_LOGOS[rawClubId(club)]; if(base) club.logo = base; else delete club.logo; }
+    applyClubDetailLogos();
     closeClubAdmin(); showToast('Fiche du club mise à jour', 'check-circle'); openClubFromMap(club);
   });
 }
@@ -4724,6 +4810,13 @@ function clubPageUrl(c){ return new URL('club/' + clubSlug(c) + '.html', locatio
     if(club.latitude==null && tries++ < 30){ setTimeout(go, 100); return; }
     if(club.latitude!=null) map.setView([club.latitude, club.longitude], 13);
     openClubFromMap(club);
+    /* ?club=…&gerer=1 : ouvre directement la demande de gestion (lien des emails et des pages club). */
+    let gerer = null; try{ gerer = new URLSearchParams(location.search).get('gerer'); }catch(e){}
+    if(gerer && SB_ON) setTimeout(()=>{
+      const st = MY_CLAIMS[rawClubId(club)];
+      if(st === 'approved' || IS_ADMIN) openEditForm(club);
+      else if(st !== 'pending') requireProfile(()=> openClaimForm(club));
+    }, 1600);
   })();
 })();
 
