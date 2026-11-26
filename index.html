@@ -679,6 +679,20 @@
   .club-fav-btn{ width:40px; height:40px; border-radius:12px; border:1px solid var(--line); background:var(--bg-card-hi); color:var(--text-mid);
     display:flex; align-items:center; justify-content:center; cursor:pointer; }
   .club-fav-btn.active{ color:#f5b301; border-color:#f5b301; }
+  /* ===== Transports en commun ===== */
+  .transport-btn{ bottom:166px; color:#1E3550; }
+  .transport-btn.on{ background:#1E3550; color:#fff; border-color:#1E3550; }
+  .tr-pin{ display:flex; align-items:center; justify-content:center; border-radius:7px; color:#fff; font:800 12px/1 Inter,system-ui,sans-serif;
+    border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.3); width:22px; height:22px; box-sizing:border-box; }
+  .tr-pin.bus{ width:16px; height:16px; border-radius:50%; font-size:9px; border-width:1.5px; }
+  .tr-hint{ position:absolute; left:50%; transform:translateX(-50%); bottom:110px; z-index:450; background:#1E3550; color:#fff;
+    padding:8px 14px; border-radius:99px; font-size:13px; font-weight:600; box-shadow:0 6px 16px rgba(0,0,0,.25); pointer-events:none; white-space:nowrap; }
+  .tr-row{ display:flex; align-items:center; gap:10px; padding:7px 0; border-top:1px solid var(--line); font-size:14px; }
+  .tr-row:first-of-type{ border-top:none; }
+  .tr-row .tr-pin{ flex:none; }
+  .tr-row .tr-name{ flex:1; min-width:0; color:var(--text-hi); font-weight:600; }
+  .tr-row .tr-lines{ color:var(--text-mid); font-weight:400; font-size:12.5px; }
+  .tr-row .tr-dist{ color:var(--text-mid); font-size:12.5px; white-space:nowrap; text-align:right; }
 </style>
 </head>
 <body>
@@ -805,6 +819,7 @@
 
     <div class="geo-banner" id="geo-banner"><div class="spinner"></div><span id="geo-banner-text">Localisation des terrains et clubs…</span></div>
 
+    <button class="my-loc-btn transport-btn" id="btn-transport" aria-label="Afficher les transports en commun" aria-pressed="false"><i data-lucide="train-front" width="20" height="20"></i></button>
     <button class="my-loc-btn" id="btn-myloc" aria-label="Centrer la carte sur ma position"><i data-lucide="locate-fixed" width="20" height="20"></i></button>
   </div>
 
@@ -2625,6 +2640,7 @@ function openSheet(spotId){
 
   document.getElementById('sheet-fav-btn').addEventListener('click', ()=> toggleFavorite(spot.id));
   bindAdminBar('spot', spot);
+  addNearbyTransport(spot);
   const checkinBtn = document.getElementById('btn-checkin');
   if(checkinBtn){
     checkinBtn.addEventListener('click', ()=>{
@@ -3487,6 +3503,125 @@ function clubMatchesGenderFilter(c, filterVal){
 
 const CLUBS_PAGE_SIZE = 40;
 let clubsShown = CLUBS_PAGE_SIZE;
+
+/* ===================== TRANSPORTS EN COMMUN (OpenStreetMap / Overpass) =====================
+   Bouton « Transports » : gares, métro, RER, tram (et bus en zoomant) de la zone visible.
+   Fiches : stations les plus proches avec la distance et le temps à pied. */
+const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+const TR_META = {
+  metro:{ c:'#1E5AA8', l:'M', label:'Métro' },
+  rer:{ c:'#C0392B', l:'R', label:'RER' },
+  train:{ c:'#6B3FA0', l:'G', label:'Gare' },
+  tram:{ c:'#2E8B57', l:'T', label:'Tram' },
+  bus:{ c:'#E08A00', l:'B', label:'Bus' }
+};
+function trKind(t){
+  if(!t) return null;
+  if(t.station === 'subway' || (t.subway === 'yes' && t.railway === 'station')) return 'metro';
+  if(t.railway === 'tram_stop' || (t.station === 'light_rail') || (t.tram === 'yes' && t.public_transport === 'stop_position')) return 'tram';
+  if(t.railway === 'station' || t.railway === 'halt'){
+    const n = (t.network || '') + ' ' + (t.name || '');
+    return /\bRER\b/i.test(n) ? 'rer' : 'train';
+  }
+  if(t.highway === 'bus_stop') return 'bus';
+  return null;
+}
+function trIcon(k){ const m = TR_META[k]; return L.divIcon({ className:'', html:`<div class="tr-pin ${k==='bus'?'bus':''}" style="background:${m.c}">${m.l}</div>`, iconSize: k==='bus'?[16,16]:[22,22], iconAnchor: k==='bus'?[8,8]:[11,11] }); }
+function trDedupe(els){
+  const out = [];
+  els.forEach(e=>{
+    const t = e.tags || {}; const k = trKind(t); if(!k || !t.name) return;
+    const lat = e.lat != null ? e.lat : (e.center && e.center.lat), lon = e.lon != null ? e.lon : (e.center && e.center.lon);
+    if(lat == null) return;
+    const near = out.find(o=> o.k === k && o.name === t.name && distKm(o.lat, o.lon, lat, lon) < 0.35);
+    if(near){ if(t.route_ref && !near.lines) near.lines = String(t.route_ref).split(/\s*;\s*/).join(', '); return; }
+    out.push({ k, name:t.name, lat, lon, lines: String(t.route_ref || t.line || '').split(/\s*;\s*/).filter(Boolean).join(', ') });
+  });
+  return out;
+}
+async function overpass(q, signal){
+  const r = await fetch(OVERPASS_URL, { method:'POST', body:'data=' + encodeURIComponent(q), headers:{ 'Content-Type':'application/x-www-form-urlencoded' }, signal });
+  if(!r.ok) throw new Error('overpass ' + r.status);
+  return (await r.json()).elements || [];
+}
+const TR_SELECT = 'node["railway"~"^(station|halt|tram_stop)$"]{B};node["station"~"^(subway|light_rail)$"]{B};';
+let TRANSPORT_ON = false, trAbort = null, trTimer = null, trHintEl = null;
+const transportLayer = L.layerGroup();
+const TR_CACHE = new Map();
+function trHint(text){
+  if(!trHintEl){ trHintEl = document.createElement('div'); trHintEl.className = 'tr-hint'; document.getElementById('view-map').appendChild(trHintEl); }
+  trHintEl.textContent = text; trHintEl.style.display = text ? 'block' : 'none';
+}
+async function loadTransportsInView(){
+  if(!TRANSPORT_ON) return;
+  const z = map.getZoom();
+  if(z < 13){ transportLayer.clearLayers(); trHint('Zoome sur un quartier pour voir les transports'); return; }
+  const b = map.getBounds(), g = 0.02;
+  const S = Math.floor(b.getSouth()/g)*g, W = Math.floor(b.getWest()/g)*g, N = Math.ceil(b.getNorth()/g)*g, E = Math.ceil(b.getEast()/g)*g;
+  const withBus = z >= 16;
+  const key = [S,W,N,E].map(x=>x.toFixed(2)).join(',') + (withBus ? ':bus' : '');
+  let list = TR_CACHE.get(key);
+  if(!list){
+    trHint('Chargement des transports…');
+    if(trAbort) trAbort.abort(); trAbort = new AbortController();
+    const bb = `(${S.toFixed(3)},${W.toFixed(3)},${N.toFixed(3)},${E.toFixed(3)})`;
+    const q = `[out:json][timeout:20];(${TR_SELECT.split('{B}').join(bb)}${withBus ? `node["highway"="bus_stop"]${bb};` : ''});out body 1500;`;
+    try{ list = trDedupe(await overpass(q, trAbort.signal)); TR_CACHE.set(key, list); }
+    catch(e){ if(e.name !== 'AbortError') trHint('Transports indisponibles pour le moment'); return; }
+  }
+  if(!TRANSPORT_ON) return;
+  transportLayer.clearLayers();
+  list.forEach(st=>{
+    L.marker([st.lat, st.lon], { icon:trIcon(st.k), zIndexOffset:-500, keyboard:false })
+      .bindTooltip(`${TR_META[st.k].label} · ${esc(st.name)}${st.lines ? ' · ' + esc(st.lines) : ''}`, { direction:'top', offset:[0,-8] })
+      .addTo(transportLayer);
+  });
+  trHint(withBus ? '' : (list.length ? 'Zoome encore pour voir aussi les arrêts de bus' : 'Aucune gare ni station ici · zoome pour les bus'));
+  if(!withBus && list.length) setTimeout(()=>{ if(map.getZoom() < 16 && TRANSPORT_ON) trHint(''); }, 3500);
+}
+function setTransport(on){
+  TRANSPORT_ON = on;
+  const btn = document.getElementById('btn-transport');
+  btn.classList.toggle('on', on); btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  if(on){ transportLayer.addTo(map); loadTransportsInView(); showToast('Transports affichés', 'train-front'); }
+  else { map.removeLayer(transportLayer); transportLayer.clearLayers(); trHint(''); if(trAbort) trAbort.abort(); }
+}
+document.getElementById('btn-transport').addEventListener('click', ()=> setTransport(!TRANSPORT_ON));
+map.on('moveend', ()=>{ if(!TRANSPORT_ON) return; clearTimeout(trTimer); trTimer = setTimeout(loadTransportsInView, 450); });
+
+/* Fiche : transports à proximité (700 m pour métro/RER/train/tram, 400 m pour le bus). */
+const TR_NEAR_CACHE = new Map();
+async function addNearbyTransport(obj){
+  if(!obj || obj.latitude == null || obj.geo_approx) return;
+  const body = sheetEl.querySelector('.sheet-body') || sheetEl;
+  const box = document.createElement('div');
+  box.className = 'module'; box.id = 'transport-module';
+  box.innerHTML = `<div class="module-title"><i data-lucide="train-front" width="14" height="14"></i> Transports à proximité</div><div class="tr-list" style="color:var(--text-mid);font-size:13px;">Recherche des stations…</div>`;
+  const anchor = body.querySelector('.action-row:last-of-type') || body.querySelector('#admin-bar');
+  if(anchor && anchor.parentNode === body) body.insertBefore(box, anchor); else body.appendChild(box);
+  refreshIcons();
+  const lat = +obj.latitude, lon = +obj.longitude, key = lat.toFixed(4) + ',' + lon.toFixed(4);
+  let list = TR_NEAR_CACHE.get(key);
+  if(!list){
+    const q = `[out:json][timeout:15];(${TR_SELECT.split('{B}').join(`(around:700,${lat},${lon})`)}node["highway"="bus_stop"](around:400,${lat},${lon}););out body 200;`;
+    try{ list = trDedupe(await overpass(q)); TR_NEAR_CACHE.set(key, list); }
+    catch(e){ list = null; }
+  }
+  const el = box.querySelector('.tr-list'); if(!el || !document.body.contains(box)) return;
+  if(!list){ box.remove(); return; }
+  list.forEach(st=> st.d = distKm(lat, lon, st.lat, st.lon));
+  const rail = list.filter(st=>st.k!=='bus').sort((a,b)=>a.d-b.d).slice(0,4);
+  const bus = list.filter(st=>st.k==='bus').sort((a,b)=>a.d-b.d).slice(0, rail.length ? 2 : 4);
+  const rows = rail.concat(bus);
+  if(!rows.length){ el.textContent = 'Aucune station ni arrêt de bus à moins de 700 m.'; return; }
+  el.innerHTML = rows.map(st=>{
+    const m = TR_META[st.k], min = Math.max(1, Math.round(st.d*1000/80));
+    return `<div class="tr-row"><div class="tr-pin ${st.k==='bus'?'bus':''}" style="background:${m.c}">${m.l}</div>
+      <div class="tr-name">${esc(st.name)}<div class="tr-lines">${esc(m.label)}${st.lines ? (st.lines.includes(',') ? ' · lignes ' : ' · ligne ') + esc(st.lines) : ''}</div></div>
+      <div class="tr-dist">${fmtKm(st.d)}<br>${min} min à pied</div></div>`;
+  }).join('') + `<div style="color:var(--text-low);font-size:11px;margin-top:6px;">Données © OpenStreetMap</div>`;
+}
+
 /* ===================== CLUBS LES PLUS PROCHES ===================== */
 let USER_POS = null;
 try{ USER_POS = JSON.parse(sessionStorage.getItem('vs_pos') || 'null'); }catch(e){ USER_POS = null; }
@@ -3714,6 +3849,7 @@ function openClubFromMap(club){
   if(favBtn) favBtn.addEventListener('click', ()=> toggleFavorite(club.id));
   bindClubDetailsActions(club);
   bindAdminBar('club', club);
+  addNearbyTransport(club);
 }
 
 /* Partage réel : feuille de partage du téléphone si dispo, sinon copie d'un lien Google Maps. */
@@ -4149,7 +4285,7 @@ function openLegal(kind){
       <p><b>Destinataires et sous-traitants</b> — Supabase, Inc. : comptes et contenus, serveurs situés dans l’Union européenne (Francfort). Resend : envoi des e-mails de connexion, région Union européenne. GitHub, Inc. : hébergement du site. Ces prestataires étant des sociétés américaines, un accès depuis les États-Unis ne peut être exclu ; il est encadré par les clauses contractuelles types de la Commission européenne et, le cas échéant, le Data Privacy Framework UE–États-Unis. Aucune donnée n’est vendue ni utilisée à des fins publicitaires.</p>
       <p><b>Durée de conservation</b> — Les check-ins sont effacés automatiquement après 30 jours, les sessions 30 jours après leur date, les messages du chat après 90 jours. Le reste (profil, terrains proposés, fiches club) est conservé tant que ton compte existe, puis effacé immédiatement à sa suppression.</p>
       <p><b>Tes droits</b> — Accès, rectification, effacement, portabilité, limitation, opposition : bouton « Supprimer mon compte » dans Profil, ou écris à ${mail}. Réponse sous un mois. Tu peux aussi adresser une réclamation à la CNIL (cnil.fr).</p>
-      <p><b>Services tiers</b> — Fond de carte © OpenStreetMap / CARTO, météo Open-Meteo, adresses IGN Géoplateforme, équipements sportifs Data ES (ministère des Sports, Licence Ouverte 2.0). Ces services reçoivent ton adresse IP lors de leur chargement. Les polices de caractères sont hébergées sur le site lui-même (aucune requête vers Google).</p>
+      <p><b>Services tiers</b> — Fond de carte © OpenStreetMap / CARTO, transports en commun © OpenStreetMap (serveur Overpass), météo Open-Meteo, adresses IGN Géoplateforme, équipements sportifs Data ES (ministère des Sports, Licence Ouverte 2.0). Ces services reçoivent ton adresse IP lors de leur chargement. Les polices de caractères sont hébergées sur le site lui-même (aucune requête vers Google).</p>
       <p style="color:var(--text-low)">Dernière mise à jour : 25 novembre 2026.</p>`;
   }
   document.getElementById('legal-backdrop').classList.add('show');
