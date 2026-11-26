@@ -401,6 +401,7 @@
   .cat-pill.national.lv-n3{background:rgba(180,83,9,0.12);border-color:rgba(180,83,9,0.4);color:#B45309;}
   .cat-pill.national.lv-n2{background:rgba(202,138,4,0.14);border-color:rgba(202,138,4,0.45);color:#CA8A04;}
   .cat-pill.national.lv-elite{background:rgba(124,58,237,0.12);border-color:rgba(124,58,237,0.4);color:#7C3AED;}
+  .lv-pro{background:#182B2E;border-color:#182B2E;color:#F5C451;}
   #cat-toggle-chevron{transition:transform .2s ease;}
   .club-actions{display:flex;gap:8px;margin-top:14px;}
   .club-actions a, .club-actions button{
@@ -1314,6 +1315,8 @@ function pouleLabel(code){
   if(/^N2F/.test(code)) return 'N2F';
   if(/^EAM/.test(code)) return 'ELITE AVENIR M';
   if(/^EAF/.test(code)) return 'ELITE AVENIR F';
+  if(code === 'LAM' || code === 'LBM') return 'PRO M';
+  if(code === 'LAF') return 'PRO F';
   if(code === 'ELM') return 'ELITE M';
   if(code === 'ELF') return 'ELITE F';
   /* Catégories jeunes (moins de 18 ans), toutes régions confondues */
@@ -1350,7 +1353,7 @@ function pouleLabels(codes){
   return seen;
 }
 function isNationalLabel(l){
-  return l.startsWith('N3')||l.startsWith('N2')||l.startsWith('ELITE');
+  return l.startsWith('N3')||l.startsWith('N2')||l.startsWith('ELITE')||l.startsWith('PRO');
 }
 /* Classe CSS de palier national, pour distinguer visuellement N3 < N2 < Élite
    (au lieu d'un seul badge doré générique pour les trois). */
@@ -1358,6 +1361,7 @@ function nationalLevelClass(l){
   if(l.startsWith('N3')) return 'lv-n3';
   if(l.startsWith('N2')) return 'lv-n2';
   if(l.startsWith('ELITE')) return 'lv-elite';
+  if(l.startsWith('PRO')) return 'lv-pro';
   return '';
 }
 
@@ -1369,7 +1373,8 @@ const LEVEL_LEGEND = [
   { badge:'PRENAT', text:'<b>Pré-Nationale</b> — juste en dessous du niveau national.' },
   { badge:'N3', text:'<b>Nationale 3</b> — premier échelon national, géré directement par la FFVolley.', cls:'lv-n3' },
   { badge:'N2', text:'<b>Nationale 2</b> — deuxième division nationale, au-dessus de Nationale 3.', cls:'lv-n2' },
-  { badge:'ELITE', text:'<b>Élite Avenir / Élite</b> — le plus haut niveau amateur/semi-pro en France.', cls:'lv-elite' },
+  { badge:'ELITE', text:'<b>Élite</b> — plus haut niveau fédéral, juste sous le professionnel (Élite Avenir : équipes réserves des clubs pros).', cls:'lv-elite' },
+  { badge:'PRO', text:'<b>Professionnel</b> — championnats de la Ligue nationale de volley : Ligue A masculine et féminine, Ligue B masculine.', cls:'lv-pro' },
 ];
 function showCategoryLegend(){
   const rows = document.getElementById('legend-rows');
@@ -1882,6 +1887,8 @@ function clubMatchesCategory(c, catFilter){
 
 function quickCatDisplayLabel(k){
   if(k === 'National') return '🏆 National';
+  if(k === 'PRO M') return '⭐ PRO M';
+  if(k === 'PRO F') return '⭐ PRO F';
   if(k === 'N3M') return 'N3 M';
   if(k === 'N3F') return 'N3 F';
   if(k === 'N2M') return 'N2 M';
@@ -3418,7 +3425,29 @@ const DEPARTMENTS = [
   { code:'988', label:'988 · Wallis-et-Futuna' },
 ];
 const GENDERS = ['Tous','Masculin','Féminin','Mixte','Jeunes','Non renseigné'];
-const QUICK_CATS = ['Tous','DEP M','DEP F','REG 2 M','REG 2 F','REG 1 M','REG 1 F','PRENAT M','PRENAT F','N3M','N3F','N2M','N2F','National'];
+/* ===================== NIVEAUX PRO ET ÉLITE (saison 2026/2027) =====================
+   Source : classements officiels FFVolley (LNV : Ligue A M, Ligue A F, Ligue B M ;
+   FFVolley : Élite M, Élite F poules A et B), rattachés par numéro de club. */
+const TOP_LEVELS = {
+  LAM:['0594680','0060007','0374861','0066927','0314739','0523906','0862447','0449605','0757777','0175042','0349271','0929372','0343330','0114939'],
+  LAF:['0543620','0921672','0340015','0067686','0686392','0061297','0634740','0330014','0579612','0279428','0883725','0444976'],
+  LBM:['0134290','0510012','0839557','0028567','0351417','0542783','0714076','0337145','0596135','0622126'],
+  ELM:['0785464','0575650','0628128','0382201','0139148','0593656','0599522','0284553','0228400','0839914','0674157','0803771','0920003','0943861'],
+  ELF:['0454144','0623082','0590036','0593916','0939157','0299370','0695743','0351417','0898444','0927924','0628929','0062701','0067689','0686392','0136761','0340052','0948308','0061297','0921672','0714076','0319191','0330014']
+};
+function applyTopLevels(){
+  const idx = {};
+  Object.entries(TOP_LEVELS).forEach(([code, ids])=> ids.forEach(id=>{ (idx[id] = idx[id] || []).push(code); }));
+  clubs.forEach(c=>{
+    /* Les étiquettes Élite des anciennes saisons sont remplacées par celles de 2026/2027. */
+    if(c.categories) c.categories = c.categories.filter(x=> x!=='ELM' && x!=='ELF');
+    const codes = idx[rawClubId(c)]; if(!codes) return;
+    c.categories = c.categories || [];
+    codes.forEach(code=>{ if(!c.categories.includes(code)) c.categories.unshift(code); });
+  });
+}
+applyTopLevels();
+const QUICK_CATS = ['Tous','PRO M','PRO F','ELITE M','ELITE F','N2M','N2F','N3M','N3F','PRENAT M','PRENAT F','REG 1 M','REG 1 F','REG 2 M','REG 2 F','DEP M','DEP F','National'];
 let clubDepFilter = 'Tous';
 let clubGenderFilter = 'Tous';
 let clubCategorySearch = '';
