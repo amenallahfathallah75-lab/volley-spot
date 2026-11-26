@@ -1750,6 +1750,7 @@ async function saveUserSpot(spot){
     if(!myProfile){ return false; }
     const { error } = await sb.from('user_spots').insert({ name:spot.name, city:spot.city, latitude:spot.latitude, longitude:spot.longitude,
       type_surface:spot.type_surface, has_net:spot.has_net, has_lighting:spot.has_lighting });
+    if(!error) trackEvent('spot_add');
     return !error;
   }
   try{
@@ -2496,7 +2497,7 @@ function renderSearchResults(list){
   box.querySelectorAll('.search-result-item').forEach(el=>{
     el.addEventListener('click', ()=>{
       const r = list[+el.dataset.idx];
-      box.classList.remove('show');
+      box.classList.remove('show'); trackEvent('search');
       document.getElementById('search-input').value = r.label;
       if(r.kind==='spot'){
         document.querySelectorAll('#filter-row .chip').forEach(c=>c.classList.remove('active'));
@@ -2672,10 +2673,29 @@ function approxText(ref){
 function displayTitleOf(spot){
   return (spot.type_surface==='gymnase' && spot.usedByClubs && spot.usedByClubs.length) ? spot.usedByClubs[0] : spot.name;
 }
+/* Mesure d'usage anonyme : un simple compteur par jour et par action, sans cookie ni identifiant. */
+const EV_CAP = 40;
+function trackEvent(name){
+  if(!SB_ON || !/^https?:/.test(location.protocol)) return;
+  try{
+    const k = 'vs_ev_' + name, n = +(sessionStorage.getItem(k) || 0);
+    if(n >= EV_CAP) return; sessionStorage.setItem(k, String(n+1));
+    fetch(SUPABASE_URL + '/rest/v1/rpc/track_event', { method:'POST', keepalive:true,
+      headers:{ 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:'Bearer ' + SUPABASE_ANON_KEY },
+      body: JSON.stringify({ p_event:name }) }).catch(()=>{});
+  }catch(e){}
+}
+document.addEventListener('click', e=>{
+  const a = e.target.closest && e.target.closest('a[href]'); if(!a) return;
+  const h = a.getAttribute('href') || '';
+  if(/^(mailto|tel):/.test(h)) trackEvent('contact');
+  else if(/google\.[a-z.]+\/maps|maps\.apple|waze\.com|geo:/.test(h)) trackEvent('directions');
+  else if(/ffvbbeach\.org/.test(h)) trackEvent('results');
+}, true);
 function openSheet(spotId){
   const spot = spots.find(s=>s.id===spotId);
   if(!spot) return;
-  currentSpotId = spotId;
+  currentSpotId = spotId; trackEvent('spot_open');
   sheetEl.innerHTML = sheetSpotHTML(spot);
   addSheetClose();
   refreshIcons();
@@ -2746,7 +2766,7 @@ function closeSheet(){
 backdropEl.addEventListener('click', closeSheet);
 
 function toggleFavorite(id){
-  if(favorites.has(id)) favorites.delete(id); else favorites.add(id);
+  if(favorites.has(id)) favorites.delete(id); else { favorites.add(id); trackEvent('fav_add'); }
   const btn = document.getElementById('sheet-fav-btn');
   const isFav = favorites.has(id);
   btn.classList.toggle('active', isFav);
@@ -2843,7 +2863,7 @@ async function verifyOtpCode(){
   errEl.style.color=''; errEl.textContent = 'Vérification…';
   const { error } = await sb.auth.verifyOtp({ email: otpEmail, token: code, type: 'email' });
   if(error){ errEl.textContent = 'Code incorrect ou expiré. Utilise le code du dernier e-mail reçu.'; return; }
-  errEl.textContent = '';
+  errEl.textContent = ''; trackEvent('login');
   document.getElementById('profile-otp-row').style.display = 'none';
   setOtpCooldown(false);
   const cb = profileSuccessCallback;
@@ -2916,6 +2936,7 @@ document.getElementById('google-login-btn').addEventListener('click', async ()=>
   if(!myProfile && !document.getElementById('profile-consent').checked){ errEl.style.color=''; errEl.textContent = 'Coche d\'abord la case (15 ans et plus, conditions d\'utilisation).'; return; }
   const name = document.getElementById('profile-name-input').value.trim();
   if(name){ try{ localStorage.setItem('vs_pending_name', name); }catch(e){} }
+  trackEvent('login');
   const { error } = await sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: location.origin + location.pathname } });
   if(error){ errEl.style.color=''; errEl.textContent = 'Connexion Google impossible : ' + error.message; }
 });
@@ -3020,6 +3041,7 @@ async function doCheckin(spot, count){
   await getMyUid();
   if(SB_ON){
     const { error } = await sb.from('checkins').insert({ spot_id: spot.id, players: count });
+    if(!error) trackEvent('checkin');
     if(error){ showToast('Check-in impossible, réessaie', 'alert-triangle'); return; }
     userCheckinsCount++;
     await loadSpotCheckins(spot); renderCheckinRow(spot);
@@ -3133,7 +3155,7 @@ async function toggleSessionParticipation(spot, sessionId){
   if(SB_ON){
     const mine = session.participants.some(isMine);
     if(mine){ await sb.from('session_participants').delete().eq('session_id', session.id).eq('user_id', myUid); showToast('Tu ne participes plus à cette session', 'x-circle'); }
-    else{ await sb.from('session_participants').insert({ session_id: session.id }); showToast('Tu es inscrit à la session !', 'check-circle'); }
+    else{ await sb.from('session_participants').insert({ session_id: session.id }); trackEvent('session_join'); showToast('Tu es inscrit à la session !', 'check-circle'); }
     await loadSpotSessions(spot); renderSessionsList(spot); return;
   }
   const idx = session.participants.findIndex(p=>p.email === myProfile.email);
@@ -3180,7 +3202,7 @@ document.getElementById('session-create-confirm').addEventListener('click', asyn
       const { data, error } = await sb.from('sessions').insert({ spot_id: spot.id, starts_at: starts.toISOString() }).select('id').single();
       if(error){ errEl.textContent = 'Création impossible : ' + error.message; return; }
       await sb.from('session_participants').insert({ session_id: data.id });
-      closeSessionCreateModal(); showToast('Session créée !', 'check-circle');
+      closeSessionCreateModal(); trackEvent('session_create'); showToast('Session créée !', 'check-circle');
       await loadSpotSessions(spot); renderSessionsList(spot); return;
     }
     const session = {
@@ -3646,7 +3668,7 @@ async function loadTransportsInView(){
   if(!withBus && list.length) setTimeout(()=>{ if(map.getZoom() < 16 && TRANSPORT_ON) trHint(''); }, 3500);
 }
 function setTransport(on){
-  TRANSPORT_ON = on;
+  TRANSPORT_ON = on; if(on) trackEvent('transport');
   const btn = document.getElementById('btn-transport');
   btn.classList.toggle('on', on); btn.setAttribute('aria-pressed', on ? 'true' : 'false');
   if(on){ transportLayer.addTo(map); loadTransportsInView(); showToast('Transports affichés', 'train-front'); }
@@ -3710,7 +3732,7 @@ async function addNearbyTransport(obj){
   document.getElementById('home-install-go').addEventListener('click', async ()=>{
     if(deferred){
       deferred.prompt();
-      try{ const r = await deferred.userChoice; if(r && r.outcome === 'accepted') box.hidden = true; }catch(e){}
+      try{ const r = await deferred.userChoice; if(r && r.outcome === 'accepted'){ box.hidden = true; trackEvent('install'); } }catch(e){}
       deferred = null; return;
     }
     openClubAdmin('Installer VolleySpot', `
@@ -3738,6 +3760,7 @@ function distKm(lat1, lon1, lat2, lon2){
 function fmtKm(k){ return k < 1 ? (Math.max(50, Math.round(k*1000/50)*50) + ' m') : (k < 10 ? k.toFixed(1).replace('.', ',') : Math.round(k)) + ' km'; }
 function askPosition(cb){
   if(!navigator.geolocation){ cb(false); return; }
+  trackEvent('near_me');
   navigator.geolocation.getCurrentPosition(pos=>{ setUserPos(pos.coords.latitude, pos.coords.longitude); cb(true); },
     ()=> cb(false), { timeout:9000, maximumAge:600000, enableHighAccuracy:false });
 }
@@ -3836,7 +3859,7 @@ function renderClubs(keepPage){
   list.querySelectorAll('[data-fav-club]').forEach(b=>b.addEventListener('click', (e)=>{
     e.stopPropagation();
     const id = b.dataset.favClub;
-    if(favorites.has(id)) favorites.delete(id); else favorites.add(id);
+    if(favorites.has(id)) favorites.delete(id); else { favorites.add(id); trackEvent('fav_add'); }
     const on = favorites.has(id);
     b.classList.toggle('active', on); b.setAttribute('aria-pressed', on); b.setAttribute('aria-label', on ? 'Retirer des favoris' : 'Ajouter aux favoris');
     b.innerHTML = `<i data-lucide="star" width="18" height="18" ${on?'fill="currentColor"':''}></i>`; refreshIcons();
@@ -3932,7 +3955,7 @@ function clubSheetHTML(club){
 }
 
 function openClubFromMap(club){
-  currentSpotId = null;
+  currentSpotId = null; trackEvent('club_open');
   sheetEl.innerHTML = clubSheetHTML(club);
   addSheetClose();
   refreshIcons();
@@ -3957,14 +3980,14 @@ function openClubFromMap(club){
 /* Partage réel : feuille de partage du téléphone si dispo, sinon copie d'un lien Google Maps. */
 async function shareClub(club){
   const url = clubPageUrl(club), text = `${club.name} — club de volley à ${club.city}`;
-  try{ if(navigator.share){ await navigator.share({ title: club.name, text, url }); return; } }catch(e){ if(e && e.name === 'AbortError') return; }
+  try{ if(navigator.share){ await navigator.share({ title: club.name, text, url }); trackEvent('share'); return; } }catch(e){ if(e && e.name === 'AbortError') return; }
   try{ await navigator.clipboard.writeText(url); showToast('Lien copié dans le presse-papiers','link'); }
   catch(e){ showToast('Partage indisponible sur cet appareil','alert-triangle'); }
 }
 async function shareLink(title, text, lat, lon){
   const url = (lat!=null && lon!=null) ? `https://www.google.com/maps/search/?api=1&query=${lat},${lon}` : '';
   try{
-    if(navigator.share){ await navigator.share({ title, text, url }); return; }
+    if(navigator.share){ await navigator.share({ title, text, url }); trackEvent('share'); return; }
   }catch(e){ if(e && e.name === 'AbortError') return; }
   try{
     await navigator.clipboard.writeText(url ? `${text} — ${url}` : text);
@@ -4103,7 +4126,7 @@ function openClaimForm(club){
     const contact_email = (document.getElementById('claim-email').value || '').trim().slice(0,110) || null;
     const { error } = await sb.from('club_claims').insert({ club_id: rawClubId(club), role, message, contact_email });
     if(error){ document.getElementById('claim-err').textContent = /duplicate|unique/i.test(error.message) ? 'Tu as déjà fait une demande pour ce club.' : 'Envoi impossible : ' + error.message; return; }
-    MY_CLAIMS[rawClubId(club)] = 'pending';
+    MY_CLAIMS[rawClubId(club)] = 'pending'; trackEvent('claim');
     closeClubAdmin(); showToast('Demande envoyée, merci !', 'check-circle'); openClubFromMap(club);
   });
 }
@@ -4173,11 +4196,25 @@ function openEditForm(club){
     row.trial = document.getElementById('cd-trial').checked;
     const { error } = await sb.from('club_details').upsert(row);
     if(error){ document.getElementById('cd-err').textContent = 'Enregistrement impossible : ' + error.message; return; }
-    CLUB_DETAILS[club.id] = Object.assign({}, d, row);
+    CLUB_DETAILS[club.id] = Object.assign({}, d, row); trackEvent('club_edit');
     if(!row.logo){ const base = CLUB_LOGOS[rawClubId(club)]; if(base) club.logo = base; else delete club.logo; }
     applyClubDetailLogos();
     closeClubAdmin(); showToast('Fiche du club mise à jour', 'check-circle'); openClubFromMap(club);
   });
+}
+/* Ce que font les visiteurs (30 derniers jours), à partir des compteurs anonymes. */
+const EV_LABELS = [['club_open','Fiches club ouvertes'],['spot_open','Fiches terrain ouvertes'],['search','Recherches'],['near_me','« Près de moi »'],
+  ['directions','Itinéraires'],['contact','Clics contact (email, tél.)'],['results','Clics résultats et classements'],['fav_add','Favoris ajoutés'],
+  ['share','Partages'],['transport','Affichage des transports'],['login','Connexions'],['claim','Demandes de gestion de club'],['club_edit','Fiches club modifiées'],
+  ['checkin','Check-ins'],['session_create','Sessions créées'],['session_join','Inscriptions à une session'],['spot_add','Terrains proposés'],['install','Installations de l’appli']];
+function usageStatsHTML(views, weekAgo){
+  const tot = {}, wk = {};
+  views.forEach(v=>{ if(!/^ev:/.test(v.kind)) return; const k = v.kind.slice(3); tot[k] = (tot[k]||0) + v.views; if(v.day > weekAgo) wk[k] = (wk[k]||0) + v.views; });
+  const rows = EV_LABELS.filter(([k])=>tot[k]).sort((a,b)=>tot[b[0]]-tot[a[0]]);
+  return `<div class="filter-section-label" style="padding:14px 0 8px;">Ce que font les visiteurs</div><div class="admin-item">` +
+    (rows.length ? `<table style="width:100%;border-collapse:collapse;font-size:13px;"><tr style="color:var(--text-mid);font-size:11.5px;text-align:right"><td></td><td>7 j</td><td>30 j</td></tr>` +
+      rows.map(([k,l])=>`<tr style="border-top:1px solid var(--line)"><td style="padding:5px 0">${l}</td><td style="text-align:right">${wk[k]||0}</td><td style="text-align:right"><b>${tot[k]}</b></td></tr>`).join('') + `</table>`
+    : `<span style="color:var(--text-mid)">Pas encore de données : elles apparaîtront au fil des visites.</span>`) + `</div>`;
 }
 /* Panneau de modération (visible uniquement par l'administrateur) */
 async function renderAdminPanel(){
@@ -4198,7 +4235,7 @@ async function renderAdminPanel(){
       <div><b style="font-size:20px">${sum(v=>v.day>weekAgo)}</b><br><span style="color:var(--text-mid);font-size:12px">7 jours</span></div>
       <div><b style="font-size:20px">${sum(()=>true)}</b><br><span style="color:var(--text-mid);font-size:12px">30 jours</span></div>
       <div><b style="font-size:20px">${sum(v=>v.kind==='club'||v.kind==='dep')}</b><br><span style="color:var(--text-mid);font-size:12px">via Google</span></div>
-    </div>`;
+    </div>` + usageStatsHTML(views||[], weekAgo);
   const clubName = id => (clubs.find(c=>c.id==='club_'+id)||{}).name || id;
   box.innerHTML = statsHTML + `<div class="filter-section-label" style="padding:4px 0 8px;">Modération</div>` +
     ((claims||[]).length || (spotsP||[]).length ? '' : `<div class="profile-note">Rien à valider pour l'instant.</div>`) +
@@ -4454,7 +4491,7 @@ function openLegal(kind){
       <p><b>Propriété intellectuelle</b> — Les noms et logos des clubs appartiennent à leurs clubs respectifs et sont affichés à titre d’identification. Tout club peut en demander le retrait à ${mail}. VolleySpot est un projet indépendant, non affilié à la FFVolley.</p>
       <p><b>Source des données clubs</b> — Annuaire public des clubs de la FFVolley (coordonnées des correspondants publiées par la fédération). VolleySpot n’exploite ces données qu’à des fins de mise en relation avec les clubs.</p>
       <p><b>Droit de rectification et de retrait</b> — Tout club ou correspondant peut demander la correction ou la suppression de ses informations en écrivant à ${mail} (lien également présent sur chaque fiche club). Les demandes sont traitées sous 30 jours.</p>
-      <p><b>Sans compte</b> — Tes favoris restent uniquement sur ton appareil. Aucun cookie, aucun traceur publicitaire. La fréquentation est mesurée par un simple compteur anonyme (nombre de visites par jour), sans cookie ni adresse IP conservée : aucune donnée ne permet de t’identifier.</p>
+      <p><b>Sans compte</b> — Tes favoris restent uniquement sur ton appareil. Aucun cookie, aucun traceur publicitaire. La fréquentation est mesurée par de simples compteurs anonymes (nombre de visites et d’actions par jour, par exemple « fiche club ouverte » ou « itinéraire demandé »), sans cookie, sans identifiant et sans adresse IP conservée : aucune donnée ne permet de t’identifier.</p>
       <p><b>Avec un compte</b> — Nous enregistrons ton adresse e-mail (pour la connexion, jamais affichée), ton prénom ou pseudo (visible des autres joueurs), et ce que tu publies : check-ins, sessions et inscriptions, messages du chat, terrains proposés, demandes de gestion de club et infos de fiche club. Si tu te connectes avec Google, Google nous transmet ton adresse e-mail et ton prénom (rien d’autre n’est utilisé). Base légale : l’exécution du service que tu demandes en créant un compte (art. 6.1.b du RGPD). Le service est réservé aux personnes d’au moins 15 ans.</p>
       <p><b>Destinataires et sous-traitants</b> — Supabase, Inc. : comptes et contenus, serveurs situés dans l’Union européenne (Francfort). Resend : envoi des e-mails de connexion, région Union européenne. GitHub, Inc. : hébergement du site. Ces prestataires étant des sociétés américaines, un accès depuis les États-Unis ne peut être exclu ; il est encadré par les clauses contractuelles types de la Commission européenne et, le cas échéant, le Data Privacy Framework UE–États-Unis. Aucune donnée n’est vendue ni utilisée à des fins publicitaires.</p>
       <p><b>Durée de conservation</b> — Les check-ins sont effacés automatiquement après 30 jours, les sessions 30 jours après leur date, les messages du chat après 90 jours. Le reste (profil, terrains proposés, fiches club) est conservé tant que ton compte existe, puis effacé immédiatement à sa suppression.</p>
