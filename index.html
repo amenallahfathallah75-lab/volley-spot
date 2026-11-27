@@ -3571,6 +3571,8 @@ function applySeasonLevels(){
 }
 applySeasonLevels();
 applyTopLevels();
+/* Les catégories jeunes (U18) ne sont plus affichées. */
+clubs.forEach(c=>{ if(c.categories) c.categories = c.categories.filter(x=> pouleLabel(x) !== 'U18'); });
 const QUICK_CATS = ['Tous','PRO M','PRO F','ELITE M','ELITE F','N2M','N2F','N3M','N3F','PRENAT M','PRENAT F','REG 1 M','REG 1 F','REG 2 M','REG 2 F','DEP M','DEP F','National'];
 let clubDepFilter = 'Tous';
 let clubGenderFilter = 'Tous';
