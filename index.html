@@ -694,6 +694,11 @@
   .tr-row .tr-name{ flex:1; min-width:0; color:var(--text-hi); font-weight:600; }
   .tr-row .tr-lines{ color:var(--text-mid); font-weight:400; font-size:12.5px; }
   .tr-row .tr-dist{ color:var(--text-mid); font-size:12.5px; white-space:nowrap; text-align:right; }
+  .user-loc{ position:relative; }
+  .user-loc .ul-dot{ position:absolute; left:3px; top:3px; width:16px; height:16px; border-radius:50%; background:#1E6FE0; border:3px solid #fff; box-shadow:0 1px 6px rgba(0,0,0,.35); }
+  .user-loc .ul-pulse{ position:absolute; left:-9px; top:-9px; width:40px; height:40px; border-radius:50%; background:rgba(30,111,224,.25); animation:ulpulse 2s ease-out infinite; }
+  @keyframes ulpulse{ 0%{ transform:scale(.4); opacity:1; } 100%{ transform:scale(1.4); opacity:0; } }
+  @media (prefers-reduced-motion:reduce){ .user-loc .ul-pulse{ animation:none; } }
   .home-club-cta{ display:flex; align-items:center; gap:12px; margin:22px 18px 0; padding:14px; border-radius:18px; background:#FFF6EE; border:1px solid #F3D9C4; color:var(--text-hi); text-decoration:none; }
   .home-club-cta .hc-ic{ flex:none; width:42px; height:42px; border-radius:12px; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; }
   .home-club-cta .hc-txt{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; font-size:12.5px; line-height:1.35; color:var(--text-mid); }
@@ -1802,7 +1807,11 @@ function switchView(view){
   if(view==='profile') renderProfileStats();
 }
 document.querySelectorAll('.nav-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>switchView(btn.dataset.view));
+  btn.addEventListener('click', ()=>{
+    switchView(btn.dataset.view);
+    /* Première ouverture de la carte par l'onglet du bas : on localise la personne (une fois par visite). */
+    if(btn.dataset.view === 'map' && typeof userLocMarker !== 'undefined' && !userLocMarker && typeof locateOnMapOpen === 'function') setTimeout(locateOnMapOpen, 200);
+  });
 });
 
 /* ===================== MAP SETUP ===================== */
@@ -2525,17 +2534,64 @@ document.getElementById('search-input').addEventListener('blur', ()=>{
   setTimeout(()=> document.getElementById('search-results').classList.remove('show'), 150);
 });
 
-/* Geolocate */
+/* Geolocate : un seul point « vous êtes ici », mis à jour à chaque localisation. */
+let userLocMarker = null;
+function showUserOnMap(lat, lon){
+  const icon = L.divIcon({ className:'user-loc', html:'<span class="ul-pulse"></span><span class="ul-dot"></span>', iconSize:[22,22], iconAnchor:[11,11] });
+  if(userLocMarker) userLocMarker.setLatLng([lat, lon]);
+  else userLocMarker = L.marker([lat, lon], { icon, interactive:false, keyboard:false, zIndexOffset:1000 }).addTo(map);
+}
+/* Combien de lieux du filtre en cours autour de la position (pour le message d'arrivée). */
+function nearbySummary(lat, lon){
+  const R = 10, f = activeFilter;
+  if(!f || f === 'tous' || f === 'gymnase'){
+    const n = clubs.filter(c=> c.latitude!=null && distKm(lat, lon, c.latitude, c.longitude) <= R).length;
+    return n ? `${n} club${n>1?'s':''} à moins de ${R} km` : `Aucun club à moins de ${R} km : dézoome pour en voir plus`;
+  }
+  const lbl = { sable:['terrain de beach','terrains de beach'], herbe:['terrain de green','terrains de green'], bitume:['terrain de street','terrains de street'] }[f] || ['lieu','lieux'];
+  const n = spots.filter(s=> s.type_surface===f && distKm(lat, lon, s.latitude, s.longitude) <= R).length;
+  return n ? `${n} ${n>1?lbl[1]:lbl[0]} à moins de ${R} km` : `Aucun ${lbl[0]} à moins de ${R} km : dézoome pour en voir plus`;
+}
+/* Cadre la carte sur la personne et les 6 lieux les plus proches du filtre en cours (dans 15 km). */
+function centerOnUser(lat, lon, announce){
+  showUserOnMap(lat, lon);
+  const f = activeFilter, pool = (!f || f==='tous' || f==='gymnase')
+    ? clubs.filter(c=>c.latitude!=null).map(c=>[c.latitude, c.longitude])
+    : spots.filter(s=>s.type_surface===f).map(s=>[s.latitude, s.longitude]);
+  const near = pool.map(p=>[distKm(lat, lon, p[0], p[1]), p]).filter(x=>x[0] <= 15).sort((a,b)=>a[0]-b[0]).slice(0,6).map(x=>x[1]);
+  if(near.length){
+    const b = L.latLngBounds([[lat, lon], ...near]);
+    /* La personne reste au centre : on symétrise le cadre autour d'elle. */
+    const dLat = Math.max(Math.abs(b.getNorth()-lat), Math.abs(lat-b.getSouth()), 0.004), dLon = Math.max(Math.abs(b.getEast()-lon), Math.abs(lon-b.getWest()), 0.006);
+    map.flyToBounds([[lat-dLat, lon-dLon], [lat+dLat, lon+dLon]], { padding:[50,50], maxZoom:15, duration:0.9 });
+  } else map.flyTo([lat, lon], 12, { duration:0.9 });
+  if(announce) setTimeout(()=> showToast(nearbySummary(lat, lon), 'map-pin'), 950);
+}
 function geolocate(fly){
   if(!navigator.geolocation){ showToast('Géolocalisation indisponible', 'alert-triangle'); return; }
   navigator.geolocation.getCurrentPosition(pos=>{
     const { latitude, longitude } = pos.coords;
     setUserPos(latitude, longitude);
-    if(fly) map.flyTo([latitude, longitude], 13, { duration:0.9 });
-    L.circleMarker([latitude, longitude], {
-      radius:7, color:'#84CC16', weight:2, fillColor:'#84CC16', fillOpacity:0.7
-    }).addTo(map);
-  }, ()=> showToast('Position indisponible', 'alert-triangle'));
+    if(fly) centerOnUser(latitude, longitude, true); else showUserOnMap(latitude, longitude);
+  }, ()=> showToast('Position indisponible', 'alert-triangle'), { timeout:9000, maximumAge:300000 });
+}
+/* À l'ouverture de la carte : si la localisation est autorisée (ou acceptée à la demande),
+   on centre sur la personne et on montre ce qu'il y a autour. On ne redemande pas après un refus. */
+function locateOnMapOpen(){
+  if(!navigator.geolocation) return;
+  const run = ()=>{
+    if(USER_POS){ centerOnUser(USER_POS.lat, USER_POS.lon, true); }
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const { latitude:la, longitude:lo } = pos.coords, moved = !USER_POS || distKm(USER_POS.lat, USER_POS.lon, la, lo) > 0.3;
+      const had = !!USER_POS; setUserPos(la, lo);
+      if(!had || moved) centerOnUser(la, lo, !had); else showUserOnMap(la, lo);
+    }, ()=>{}, { timeout:9000, maximumAge:300000, enableHighAccuracy:false });
+  };
+  let asked = false; try{ asked = sessionStorage.getItem('vs_geo_asked') === '1'; }catch(e){}
+  const ask = ()=>{ if(asked && !USER_POS) return; try{ sessionStorage.setItem('vs_geo_asked','1'); }catch(e){} run(); };
+  if(navigator.permissions && navigator.permissions.query){
+    navigator.permissions.query({ name:'geolocation' }).then(p=>{ if(p.state === 'denied') return; if(p.state === 'granted') run(); else ask(); }).catch(ask);
+  } else ask();
 }
 document.getElementById('btn-geoloc').addEventListener('click', ()=>geolocate(true));
 document.getElementById('clubs-near-btn').addEventListener('click', ()=> sortClubsNear(!(clubSortNear && USER_POS)));
@@ -4820,7 +4876,7 @@ function hideHome(){ const h = document.getElementById('home-v2'); if(h) h.class
 function homeGo(choice){
   hideHome(); hideLandingScreen();
   if(choice === 'club'){ switchView('clubs'); sortClubsNear(true); }
-  else applyCategoryFilter(choice === 'gymnase' ? 'tous' : choice);
+  else { applyCategoryFilter(choice === 'gymnase' ? 'tous' : choice); setTimeout(locateOnMapOpen, 200); }
 }
 if(HOME_V2){
   document.querySelectorAll('.home-round').forEach(b=> b.addEventListener('click', ()=> homeGo(b.dataset.home)));
