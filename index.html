@@ -2182,6 +2182,20 @@ function renderMarkers(){
     m.addTo(markersLayer);
     renderedSpotIds.add(s.id);
   });
+  /* Clubs sans gymnase connu (plus de la moitié de l'annuaire) : affichés sur leur ville, sinon ils
+     n'apparaîtraient qu'avec le filtre « Club ». Pas ceux placés au hasard dans leur département. */
+  if(activeFilter==='tous') clubs.forEach(c=>{ if(isOrphanClub(c)) addOrphanClubMarker(c); });
+}
+function isOrphanClub(c){
+  return (!c.gymsList || !c.gymsList.length) && c.latitude!=null && c.longitude!=null && !(c.geo_level > 3)
+    && (!mapDepFilter || c.dep===mapDepFilter);
+}
+function addOrphanClubMarker(c){
+  if(renderedClubIds.has(c.id)) return;
+  const m = L.marker([c.latitude, c.longitude], { icon: makeClubIcon(c) });
+  m.on('click', ()=> openClubFromMap(c));
+  m.addTo(markersLayer);
+  renderedClubIds.add(c.id);
 }
 renderMarkers();
 
@@ -2198,6 +2212,7 @@ function addSpotMarkerIncremental(s){
   renderedSpotIds.add(s.id);
 }
 function addClubMarkerIncremental(c){
+  if(activeFilter==='tous'){ if(isOrphanClub(c)) addOrphanClubMarker(c); return; }
   if(renderedClubIds.has(c.id) || activeFilter!=='clubs' || !clubMatchesCategory(c, mapCategoryFilter)) return;
   if(mapDepFilter && c.dep!==mapDepFilter) return;
   const m = L.marker([c.latitude, c.longitude], { icon: makeClubIcon(c) });
@@ -2320,7 +2335,7 @@ async function runGeocodeQueue(){
       // Applique immédiatement les coordonnées et ajoute le(s) marqueur(s) correspondant(s)
       // sans reconstruire toute la couche — c'est ce qui évite les à-coups au premier chargement.
       (keyRefs.get(key) || []).forEach(({type, ref})=>{
-        ref.latitude = coords.lat; ref.longitude = coords.lon; ref.geo_approx = approx; ref.geo_level = approx ? 2 : 0;
+        ref.latitude = coords.lat; ref.longitude = coords.lon; ref.geo_approx = approx; ref.geo_level = approx ? 4 : 0;
         if(type==='spot') addSpotMarkerIncremental(ref);
         else addClubMarkerIncremental(ref);
       });
@@ -2724,6 +2739,7 @@ function sheetSpotHTML(spot){
 
 function approxText(ref){
   if(ref.geo_level === 3) return 'Salle non renseignée : épingle placée au centre de la commune du club.';
+  if(ref.geo_level === 4) return 'Adresse introuvable : épingle placée au hasard dans le département.';
   return ref.geo_level === 2 ? 'Adresse introuvable : épingle placée au centre de la commune.' : 'Position approximative (adresse imprécise).';
 }
 function displayTitleOf(spot){
