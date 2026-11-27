@@ -587,6 +587,29 @@
   .club-extra .pre{white-space:pre-line;}
   .recruit-pill{font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:8px;background:rgba(15,107,98,0.12);color:var(--accent-2);}
   .club-manage-btn{width:100%;margin-top:12px;background:var(--bg-card);border:1px dashed var(--accent-2);color:var(--accent-2);border-radius:12px;padding:11px;font-weight:700;font-size:13px;}
+  .tourn-card-wrap{max-width:460px;max-height:90vh;}
+  .tourn-intro{font-size:13px;color:var(--text-mid);line-height:1.45;}
+  .tourn-chips{padding:10px 0 4px;}
+  .tourn-card{display:flex;gap:12px;width:100%;text-align:left;background:var(--bg-card);border:1px solid var(--line);border-radius:14px;padding:10px;margin-top:10px;cursor:pointer;color:var(--text-hi);font:inherit;}
+  .tourn-card .tc-poster{flex:none;width:64px;height:84px;border-radius:10px;background:linear-gradient(135deg,#D2432F,#0F6B62) center/cover no-repeat;display:flex;align-items:center;justify-content:center;font-size:26px;}
+  .tourn-card .tc-body{display:flex;flex-direction:column;gap:3px;min-width:0;}
+  .tourn-card b{font-family:'Archivo',sans-serif;font-size:15px;line-height:1.25;}
+  .tourn-card .tc-date{font-size:12px;font-weight:700;color:var(--accent);}
+  .tourn-card .tc-meta{font-size:12.5px;color:var(--text-mid);}
+  .tourn-empty{text-align:center;color:var(--text-mid);font-size:13.5px;padding:26px 8px;line-height:1.5;}
+  .tourn-poster{display:block;width:100%;border-radius:14px;margin-bottom:12px;}
+  .tourn-info{margin-bottom:14px;}
+  .tourn-info .pre{white-space:pre-line;}
+  .tourn-actions{display:flex;gap:8px;margin-top:10px;}
+  .tourn-actions .club-manage-btn{flex:1;}
+  .tourn-del{border-color:var(--accent)!important;color:var(--accent)!important;}
+  .tourn-steps{font-size:13.5px;line-height:1.5;padding-left:20px;margin:12px 0 16px;}
+  .tf-drop{position:relative;border:2px dashed var(--line);border-radius:14px;padding:16px;text-align:center;font-size:13px;color:var(--text-mid);background:var(--bg-primary);}
+  .tf-drop.over{border-color:var(--accent-2);background:rgba(15,107,98,0.08);}
+  .tf-drop img{display:block;max-width:100%;max-height:260px;margin:0 auto 8px;border-radius:10px;}
+  .tf-drop img[hidden]{display:none;}
+  .tf-drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;}
+  .tf-row{display:flex;gap:10px;} .tf-row>div{flex:1;min-width:0;}
   .club-form label{font-size:12px;font-weight:700;color:var(--text-mid);display:block;margin:10px 0 5px;}
   .club-form textarea{width:100%;min-height:70px;background:var(--bg-card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;font-size:14px;color:var(--text-hi);}
   .club-form .chk{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;margin-top:10px;}
@@ -811,6 +834,7 @@
     </div>
     <div class="home-rounds" role="list">
       <button class="home-round" data-home="club" role="listitem"><span class="ring"><span class="disc" style="background:#D2432F">🏐</span></span><span class="lbl">Clubs</span></button>
+      <button class="home-round" data-home="tournois" role="listitem"><span class="ring"><span class="disc" style="background:#E0A100">🏆</span></span><span class="lbl">Tournois</span></button>
       <button class="home-round" data-home="sable" role="listitem"><span class="ring"><span class="disc" style="background:#C98A3A">🏖️</span></span><span class="lbl">Beach</span></button>
       <button class="home-round" data-home="tous" role="listitem"><span class="ring"><span class="disc" style="background:#182B2E">🗺️</span></span><span class="lbl">Carte</span></button>
       <button class="home-round" data-home="bitume" role="listitem"><span class="ring"><span class="disc" style="background:#7C5CD6">🏙️</span></span><span class="lbl">Street</span></button>
@@ -1048,6 +1072,17 @@
         <button class="legend-close-btn" id="clubadmin-close" aria-label="Fermer"><i data-lucide="x" width="18" height="18"></i></button>
       </div>
       <div id="clubadmin-body" class="club-form"></div>
+    </div>
+  </div>
+
+  <!-- ===================== TOURNOIS ===================== -->
+  <div class="modal-backdrop" id="tourn-backdrop">
+    <div class="modal-card tourn-card-wrap">
+      <div class="legend-title">
+        <span id="tourn-title">Tournois</span>
+        <button class="legend-close-btn" id="tourn-close" aria-label="Fermer"><i data-lucide="x" width="18" height="18"></i></button>
+      </div>
+      <div id="tourn-body"></div>
     </div>
   </div>
 
@@ -4039,6 +4074,7 @@ function clubSheetHTML(club){
         <button class="btn-ghost" id="btn-club-share"><i data-lucide="share-2" width="16" height="16"></i></button>
       </div>
       ${clubDetailsHTML(club)}
+      <div class="club-tourn-zone">${clubTournamentsHTML(club)}</div>
       <a class="legal-link" href="${contactLink('VolleySpot — correction ou retrait : ' + club.name + ' (' + club.id.replace('club_','') + ')')}">Une info erronée ? Vous êtes ce club ? Demander une correction ou un retrait</a>
     </div>
   `;
@@ -4063,6 +4099,7 @@ function openClubFromMap(club){
   const favBtn = document.getElementById('sheet-fav-btn');
   if(favBtn) favBtn.addEventListener('click', ()=> toggleFavorite(club.id));
   bindClubDetailsActions(club);
+  bindClubTournaments(club);
   bindAdminBar('club', club);
   addNearbyTransport(club);
 }
@@ -4297,7 +4334,7 @@ function openEditForm(club){
 const EV_LABELS = [['club_open','Fiches club ouvertes'],['spot_open','Fiches terrain ouvertes'],['search','Recherches'],['near_me','« Près de moi »'],
   ['directions','Itinéraires'],['contact','Clics contact (email, tél.)'],['results','Clics résultats et classements'],['fav_add','Favoris ajoutés'],
   ['share','Partages'],['transport','Affichage des transports'],['login','Connexions'],['claim','Demandes de gestion de club'],['club_edit','Fiches club modifiées'],
-  ['checkin','Check-ins'],['session_create','Sessions créées'],['session_join','Inscriptions à une session'],['spot_add','Terrains proposés'],['install','Installations de l’appli']];
+  ['checkin','Check-ins'],['session_create','Sessions créées'],['session_join','Inscriptions à une session'],['spot_add','Terrains proposés'],['install','Installations de l’appli'],['tourn_list','Ouvertures de « Tournois »'],['tourn_open','Tournois consultés'],['tourn_link','Clics vers le site d’un tournoi'],['tourn_add','Tournois publiés']];
 function usageStatsHTML(views, weekAgo){
   const tot = {}, wk = {};
   views.forEach(v=>{ if(!/^ev:/.test(v.kind)) return; const k = v.kind.slice(3); tot[k] = (tot[k]||0) + v.views; if(v.day > weekAgo) wk[k] = (wk[k]||0) + v.views; });
@@ -4354,6 +4391,283 @@ async function renderAdminPanel(){
   box.querySelectorAll('[data-spot]').forEach(b=>b.addEventListener('click', async ()=>{ await sb.from('user_spots').update({ status:b.dataset.st }).eq('id', b.dataset.spot); showToast(b.dataset.st==='approved'?'Terrain publié':'Terrain refusé','check-circle'); renderAdminPanel(); if(b.dataset.st==='approved') loadUserSpots(); }));
 }
 loadClubDetails();
+
+/* ===================== TOURNOIS =====================
+   Les clubs (gestionnaires validés) annoncent leurs tournois : affiche, dates, lieu, lien d'inscription. */
+let TOURNAMENTS = [];
+let TOURN_LOADED = false;
+let tournSurface = 'tous';
+let tournQuery = '';
+const TOURN_SURF = { indoor:['Indoor','🏐'], beach:['Beach','🏖️'], green:['Green','🌿'], street:['Street','🏙️'] };
+function todayISO(){ const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,10); }
+function clubByRawId(id){ return clubs.find(c=> rawClubId(c) === id); }
+function tournEnd(t){ return t.end_date || t.start_date; }
+function tournDates(t){
+  const f = s => new Date(s + 'T12:00:00');
+  const o = { weekday:'short', day:'numeric', month:'short' };
+  const a = f(t.start_date).toLocaleDateString('fr-FR', o);
+  if(!t.end_date || t.end_date === t.start_date) return a;
+  return a + ' → ' + f(t.end_date).toLocaleDateString('fr-FR', o);
+}
+async function loadTournaments(force){
+  if(!SB_ON || (TOURN_LOADED && !force)) return TOURNAMENTS;
+  try{
+    const since = new Date(Date.now() - 40*864e5).toISOString().slice(0,10);
+    const { data } = await sb.from('tournaments').select('*').gte('start_date', since).order('start_date');
+    const today = todayISO();
+    TOURNAMENTS = (data||[]).filter(t=> tournEnd(t) >= today);
+    TOURN_LOADED = true;
+  }catch(e){}
+  return TOURNAMENTS;
+}
+function canManageTourn(clubId){ return IS_ADMIN || MY_CLAIMS[clubId] === 'approved'; }
+function tournCardHTML(t){
+  const club = clubByRawId(t.club_id);
+  const s = TOURN_SURF[t.surface] || TOURN_SURF.indoor;
+  const where = [t.city, club && club.dep ? '(' + club.dep + ')' : ''].filter(Boolean).join(' ');
+  return `<button class="tourn-card" data-tourn="${esc(t.id)}">
+    <span class="tc-poster" style="${t.poster_url ? `background-image:url('${esc(t.poster_url)}')` : ''}">${t.poster_url ? '' : s[1]}</span>
+    <span class="tc-body">
+      <span class="tc-date">${esc(tournDates(t).replace(/^./, ch=> ch.toUpperCase()))}</span>
+      <b>${esc(t.title)}</b>
+      <span class="tc-meta">${s[1]} ${s[0]}${t.format ? ' · ' + esc(t.format) : ''}</span>
+      <span class="tc-meta">${esc(club ? club.name : '')}${where ? ' · ' + esc(where) : ''}</span>
+    </span>
+  </button>`;
+}
+function filteredTournaments(){
+  const q = norm(tournQuery.trim());
+  return TOURNAMENTS.filter(t=>{
+    if(tournSurface !== 'tous' && t.surface !== tournSurface) return false;
+    if(!q) return true;
+    const club = clubByRawId(t.club_id);
+    return norm([t.title, t.city, t.place, t.format, club && club.name, club && club.dep, club && club.city].join(' ')).includes(q);
+  });
+}
+function renderTournList(){
+  const box = document.getElementById('tourn-list'); if(!box) return;
+  const list = filteredTournaments();
+  box.innerHTML = list.length ? list.map(tournCardHTML).join('')
+    : `<div class="tourn-empty">${TOURNAMENTS.length ? 'Aucun tournoi ne correspond à ta recherche.' : 'Aucun tournoi annoncé pour le moment.<br>Les clubs peuvent publier le leur gratuitement.'}</div>`;
+  box.querySelectorAll('[data-tourn]').forEach(b=> b.addEventListener('click', ()=> openTournament(b.dataset.tourn)));
+}
+async function openTournaments(){
+  hideHome(); hideLandingScreen();
+  const managed = Object.keys(MY_CLAIMS).filter(id=> MY_CLAIMS[id] === 'approved');
+  openTournSheet('Tournois', `
+    <div class="tourn-intro">Les tournois organisés par les clubs : indoor, beach, green… Inscris-toi directement auprès du club.</div>
+    <div class="search-box" style="margin-top:10px;"><i data-lucide="search" width="16" height="16" style="color:var(--text-low)"></i>
+      <input id="tourn-q" placeholder="Ville, club, département…" autocomplete="off" value="${esc(tournQuery)}" aria-label="Rechercher un tournoi"></div>
+    <div class="filter-row tourn-chips" id="tourn-chips">
+      ${[['tous','Tous'],['indoor','🏐 Indoor'],['beach','🏖️ Beach'],['green','🌿 Green'],['street','🏙️ Street']].map(([k,l])=>`<button class="chip${tournSurface===k?' active':''}" data-ts="${k}">${l}</button>`).join('')}
+    </div>
+    <div id="tourn-list"><div class="tourn-empty">Chargement…</div></div>
+    <button class="club-manage-btn" id="tourn-publish"><i data-lucide="plus" width="14" height="14" style="vertical-align:-2px"></i> ${managed.length || IS_ADMIN ? 'Publier un tournoi' : 'Vous organisez un tournoi ? Publiez-le gratuitement'}</button>`);
+  trackEvent('tourn_list');
+  document.getElementById('tourn-q').addEventListener('input', e=>{ tournQuery = e.target.value; renderTournList(); });
+  document.querySelectorAll('#tourn-chips [data-ts]').forEach(b=> b.addEventListener('click', ()=>{
+    tournSurface = b.dataset.ts;
+    document.querySelectorAll('#tourn-chips .chip').forEach(x=> x.classList.toggle('active', x === b));
+    renderTournList();
+  }));
+  document.getElementById('tourn-publish').addEventListener('click', startPublishTournament);
+  await loadTournaments(true);
+  renderTournList();
+}
+function startPublishTournament(){
+  const managed = Object.keys(MY_CLAIMS).filter(id=> MY_CLAIMS[id] === 'approved').map(clubByRawId).filter(Boolean);
+  if(managed.length === 1) return openTournForm(managed[0]);
+  if(managed.length > 1){
+    openTournSheet('Pour quel club ?', managed.map(c=>`<button class="tourn-card" data-pick="${esc(rawClubId(c))}"><span class="tc-body"><b>${esc(c.name)}</b><span class="tc-meta">${esc(c.city||'')}</span></span></button>`).join(''));
+    document.querySelectorAll('[data-pick]').forEach(b=> b.addEventListener('click', ()=> openTournForm(clubByRawId(b.dataset.pick))));
+    return;
+  }
+  if(IS_ADMIN){ showToast('Ouvre la fiche du club pour publier son tournoi'); return; }
+  openTournSheet('Publier un tournoi', `
+    <div class="tourn-intro">La publication est réservée aux clubs, pour garantir des annonces fiables.</div>
+    <ol class="tourn-steps">
+      <li>Ouvre la fiche de ton club dans VolleySpot.</li>
+      <li>Touche « Vous gérez ce club ? » et envoie ta demande (validée en général sous 48 h).</li>
+      <li>Une fois validé, le bouton « Annoncer un tournoi » apparaît sur la fiche.</li>
+    </ol>
+    <a class="submit-btn" href="espace-clubs.html" style="display:block;text-align:center;text-decoration:none;">Trouver mon club</a>`);
+}
+function openTournament(id){
+  const t = TOURNAMENTS.find(x=> x.id === id); if(!t) return;
+  const club = clubByRawId(t.club_id);
+  const s = TOURN_SURF[t.surface] || TOURN_SURF.indoor;
+  const link = safeUrl(t.link);
+  trackEvent('tourn_open');
+  openTournSheet(t.title, `
+    ${t.poster_url ? `<a href="${esc(t.poster_url)}" target="_blank" rel="noopener"><img class="tourn-poster" src="${esc(t.poster_url)}" alt="Affiche du tournoi ${esc(t.title)}"></a>` : ''}
+    <div class="practical-row tourn-info">
+      <div class="line"><i data-lucide="calendar" width="14" height="14"></i><span><b>${esc(tournDates(t))}</b></span></div>
+      <div class="line"><i data-lucide="trophy" width="14" height="14"></i><span>${s[1]} ${s[0]}${t.format ? ' · ' + esc(t.format) : ''}</span></div>
+      ${t.place || t.city ? `<div class="line"><i data-lucide="map-pin" width="14" height="14"></i><span>${esc([t.place, t.city].filter(Boolean).join(', '))}</span></div>` : ''}
+      ${t.price ? `<div class="line"><i data-lucide="euro" width="14" height="14"></i><span>${esc(t.price)}</span></div>` : ''}
+      ${club ? `<div class="line"><i data-lucide="users" width="14" height="14"></i><span>Organisé par <b>${esc(club.name)}</b></span></div>` : ''}
+      ${t.description ? `<div class="line"><i data-lucide="info" width="14" height="14"></i><span class="pre">${esc(t.description)}</span></div>` : ''}
+    </div>
+    ${link ? `<a class="submit-btn" id="tourn-go" href="${esc(link)}" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;">Infos et inscription <i data-lucide="external-link" width="14" height="14" style="vertical-align:-2px"></i></a>` : ''}
+    <div class="tourn-actions">
+      ${club ? `<button class="club-manage-btn" id="tourn-club" style="margin-top:0">Voir le club</button>` : ''}
+      <button class="club-manage-btn" id="tourn-share" style="margin-top:0">Partager</button>
+    </div>
+    ${canManageTourn(t.club_id) ? `<div class="tourn-actions"><button class="club-manage-btn" id="tourn-edit" style="margin-top:0">Modifier</button><button class="club-manage-btn tourn-del" id="tourn-del" style="margin-top:0">Supprimer</button></div>` : ''}`);
+  const go = document.getElementById('tourn-go'); if(go) go.addEventListener('click', ()=> trackEvent('tourn_link'));
+  const cb = document.getElementById('tourn-club'); if(cb) cb.addEventListener('click', ()=>{ closeTournSheet(); switchView('map'); if(club.latitude!=null) map.setView([club.latitude, club.longitude], 13); openClubFromMap(club); });
+  document.getElementById('tourn-share').addEventListener('click', async ()=>{
+    const url = location.origin + location.pathname + '?tournoi=' + t.id;
+    const text = t.title + ' · ' + tournDates(t) + (t.city ? ' · ' + t.city : '');
+    try{ if(navigator.share){ await navigator.share({ title:t.title, text, url }); trackEvent('share'); return; } }catch(e){ if(e && e.name === 'AbortError') return; }
+    try{ await navigator.clipboard.writeText(url); showToast('Lien copié'); }catch(e){}
+  });
+  const ed = document.getElementById('tourn-edit'); if(ed) ed.addEventListener('click', ()=> openTournForm(club, t));
+  const del = document.getElementById('tourn-del'); if(del) del.addEventListener('click', async ()=>{
+    if(!confirm('Supprimer ce tournoi ? Cette action est définitive.')) return;
+    const { error } = await sb.from('tournaments').delete().eq('id', t.id);
+    if(error){ showToast('Suppression impossible'); return; }
+    removeTournPoster(t.poster_url);
+    TOURNAMENTS = TOURNAMENTS.filter(x=> x.id !== t.id);
+    showToast('Tournoi supprimé'); openTournaments();
+  });
+}
+function removeTournPoster(url){
+  const m = String(url||'').match(/\/object\/public\/tournois\/(.+)$/);
+  if(m) sb.storage.from('tournois').remove([decodeURIComponent(m[1])]).catch(()=>{});
+}
+/* Affiche : redimensionnée (1200 px max) et compressée en WebP avant l'envoi. */
+function compressPoster(file){
+  return new Promise((resolve, reject)=>{
+    const img = new Image(); const u = URL.createObjectURL(file);
+    img.onload = ()=>{
+      const k = Math.min(1, 1200 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width*k); c.height = Math.round(img.height*k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(u);
+      const tryQ = q => c.toBlob(b=>{
+        if(!b) return reject(new Error('canvas'));
+        if(b.size > 900000 && q > 0.45) return tryQ(q - 0.15);
+        resolve(b);
+      }, 'image/webp', q);
+      tryQ(0.82);
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(u); reject(new Error('image')); };
+    img.src = u;
+  });
+}
+function openTournForm(club, t){
+  if(!club) return;
+  t = t || {};
+  const v = k => esc(t[k] || '');
+  let posterBlob = null, removePoster = false;
+  const surfOpts = Object.entries(TOURN_SURF).map(([k,[l,e]])=>`<option value="${k}"${(t.surface||'indoor')===k?' selected':''}>${e} ${l}</option>`).join('');
+  openTournSheet(t.id ? 'Modifier le tournoi' : 'Annoncer un tournoi', `
+    <div class="tourn-intro">Pour <b>${esc(club.name)}</b>. L'annonce est visible par tous dès sa publication et disparaît après le tournoi.</div>
+    <div class="club-form">
+      <label>Affiche du tournoi</label>
+      <div class="tf-drop" id="tf-drop">
+        <img id="tf-prev" alt="" ${t.poster_url ? `src="${esc(t.poster_url)}"` : 'hidden'}>
+        <span id="tf-drop-txt">${t.poster_url ? 'Touche pour changer l’affiche' : 'Glisse ton affiche ici ou touche pour la choisir'}</span>
+        <input type="file" id="tf-file" accept="image/png,image/jpeg,image/webp">
+      </div>
+      <a href="#" id="tf-rm" style="font-size:12px;${t.poster_url ? '' : 'display:none;'}">Retirer l’affiche</a>
+      <label>Nom du tournoi *</label><input class="form-input" id="tf-title" maxlength="120" value="${v('title')}" placeholder="ex : Tournoi 4x4 mixte de Noël">
+      <div class="tf-row">
+        <div><label>Date *</label><input class="form-input" type="date" id="tf-start" value="${v('start_date')}"></div>
+        <div><label>Jusqu’au <span style="font-weight:400">(facultatif)</span></label><input class="form-input" type="date" id="tf-end" value="${v('end_date')}"></div>
+      </div>
+      <label>Surface</label><select class="form-input" id="tf-surface">${surfOpts}</select>
+      <label>Format</label><input class="form-input" id="tf-format" maxlength="80" value="${v('format')}" placeholder="ex : 4x4 mixte, tous niveaux">
+      <label>Lieu</label><input class="form-input" id="tf-place" maxlength="160" value="${v('place')}" placeholder="ex : Gymnase Jean-Moulin, 12 rue…">
+      <label>Ville</label><input class="form-input" id="tf-city" maxlength="80" value="${t.city ? v('city') : esc(club.city||'')}">
+      <label>Prix d’inscription</label><input class="form-input" id="tf-price" maxlength="80" value="${v('price')}" placeholder="ex : 10 € par joueur">
+      <label>Lien vers votre site (inscription, infos)</label><input class="form-input" id="tf-link" type="url" maxlength="300" value="${v('link')}" placeholder="https://…">
+      <label>Description</label><textarea id="tf-desc" maxlength="1500" placeholder="Programme, catégories, lots, buvette…">${v('description')}</textarea>
+      <button class="submit-btn" id="tf-save">${t.id ? 'Enregistrer' : 'Publier le tournoi'}</button>
+    </div>`);
+  const drop = document.getElementById('tf-drop'), file = document.getElementById('tf-file'), prev = document.getElementById('tf-prev');
+  const take = f=>{
+    if(!f || !/^image\//.test(f.type)){ showToast('Choisis une image (JPG, PNG ou WebP)'); return; }
+    if(f.size > 15e6){ showToast('Image trop lourde (15 Mo max)'); return; }
+    compressPoster(f).then(b=>{ posterBlob = b; removePoster = false; prev.src = URL.createObjectURL(b); prev.hidden = false;
+      document.getElementById('tf-drop-txt').textContent = 'Touche pour changer l’affiche'; document.getElementById('tf-rm').style.display = ''; })
+      .catch(()=> showToast('Image illisible'));
+  };
+  file.addEventListener('change', ()=> take(file.files[0]));
+  ['dragenter','dragover'].forEach(ev=> drop.addEventListener(ev, e=>{ e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev=> drop.addEventListener(ev, e=>{ e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e=> take(e.dataTransfer.files[0]));
+  document.getElementById('tf-rm').addEventListener('click', e=>{ e.preventDefault(); posterBlob = null; removePoster = true; prev.hidden = true; prev.removeAttribute('src');
+    document.getElementById('tf-drop-txt').textContent = 'Glisse ton affiche ici ou touche pour la choisir'; e.target.style.display = 'none'; file.value = ''; });
+  document.getElementById('tf-save').addEventListener('click', async ()=>{
+    const g = id => document.getElementById(id).value.trim();
+    const row = { club_id: rawClubId(club), title: g('tf-title'), start_date: g('tf-start'), end_date: g('tf-end') || null,
+      surface: g('tf-surface'), format: g('tf-format') || null, place: g('tf-place') || null, city: g('tf-city') || null,
+      price: g('tf-price') || null, link: g('tf-link') ? safeUrl(g('tf-link')) || null : null, description: g('tf-desc') || null };
+    if(row.title.length < 3){ showToast('Indique le nom du tournoi'); return; }
+    if(!row.start_date){ showToast('Indique la date du tournoi'); return; }
+    if(row.end_date && row.end_date < row.start_date){ showToast('La date de fin est avant la date de début'); return; }
+    if(tournEnd(row) < todayISO()){ showToast('Cette date est déjà passée'); return; }
+    if(g('tf-link') && !row.link){ showToast('Lien invalide'); return; }
+    const btn = document.getElementById('tf-save'); btn.disabled = true; btn.textContent = 'Envoi…';
+    try{
+      const oldPoster = t.poster_url || null;
+      row.poster_url = removePoster ? null : oldPoster;
+      if(posterBlob){
+        const path = row.club_id + '/' + (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)) + '.webp';
+        const up = await sb.storage.from('tournois').upload(path, posterBlob, { contentType:'image/webp', cacheControl:'31536000' });
+        if(up.error) throw up.error;
+        row.poster_url = sb.storage.from('tournois').getPublicUrl(path).data.publicUrl;
+      }
+      const res = t.id ? await sb.from('tournaments').update(row).eq('id', t.id).select().single()
+                       : await sb.from('tournaments').insert(row).select().single();
+      if(res.error) throw res.error;
+      if(oldPoster && oldPoster !== row.poster_url) removeTournPoster(oldPoster);
+      TOURNAMENTS = TOURNAMENTS.filter(x=> x.id !== res.data.id).concat(res.data).sort((a,b)=> a.start_date < b.start_date ? -1 : 1);
+      if(!t.id) trackEvent('tourn_add');
+      showToast(t.id ? 'Tournoi mis à jour' : 'Tournoi publié !');
+      openTournament(res.data.id);
+    }catch(e){
+      btn.disabled = false; btn.textContent = t.id ? 'Enregistrer' : 'Publier le tournoi';
+      showToast('Envoi impossible, réessaie');
+    }
+  });
+}
+function openTournSheet(title, html){
+  document.getElementById('tourn-title').textContent = title;
+  const body = document.getElementById('tourn-body'); body.innerHTML = html; body.scrollTop = 0;
+  document.getElementById('tourn-backdrop').classList.add('show');
+  refreshIcons();
+}
+function closeTournSheet(){ document.getElementById('tourn-backdrop').classList.remove('show'); }
+document.getElementById('tourn-close').addEventListener('click', closeTournSheet);
+document.getElementById('tourn-backdrop').addEventListener('click', e=>{ if(e.target.id === 'tourn-backdrop') closeTournSheet(); });
+/* Bloc « Tournois » sur la fiche d'un club */
+function clubTournamentsHTML(club){
+  if(!SB_ON) return '';
+  const id = rawClubId(club);
+  const list = TOURNAMENTS.filter(t=> t.club_id === id);
+  let html = list.length ? `<div class="module"><div class="module-title"><i data-lucide="trophy" width="14" height="14"></i> Tournois à venir</div>${list.map(tournCardHTML).join('')}</div>` : '';
+  if(canManageTourn(id)) html += `<button class="club-manage-btn" id="club-tourn-btn"><i data-lucide="trophy" width="14" height="14" style="vertical-align:-2px"></i> Annoncer un tournoi</button>`;
+  return html;
+}
+function bindClubTournaments(club){
+  document.querySelectorAll('.club-tourn-zone [data-tourn]').forEach(b=> b.addEventListener('click', ()=> openTournament(b.dataset.tourn)));
+  const b = document.getElementById('club-tourn-btn'); if(b) b.addEventListener('click', ()=> openTournForm(club));
+}
+loadTournaments();
+(function openTournFromUrl(){
+  let id = null; try{ id = new URLSearchParams(location.search).get('tournoi'); }catch(e){}
+  if(!id || !SB_ON) return;
+  hideLandingScreen();
+  loadTournaments().then(async ()=>{
+    if(!TOURNAMENTS.find(t=> t.id === id)){
+      try{ const { data } = await sb.from('tournaments').select('*').eq('id', id).maybeSingle(); if(data) TOURNAMENTS.push(data); }catch(e){}
+    }
+    hideHome(); hideLandingScreen();
+    if(TOURNAMENTS.find(t=> t.id === id)) openTournament(id); else openTournaments();
+  });
+})();
 
 /* ===================== ADD SPOT VIEW ===================== */
 let newSpotSurface = 'sable';
@@ -4909,6 +5223,7 @@ function showHome(){ if(!HOME_V2) return; closeSheet(); renderHome(); document.g
 function hideHome(){ const h = document.getElementById('home-v2'); if(h) h.classList.remove('show'); }
 function homeGo(choice){
   hideHome(); hideLandingScreen();
+  if(choice === 'tournois'){ openTournaments(); return; }
   if(choice === 'club'){ switchView('clubs'); sortClubsNear(true); }
   else { applyCategoryFilter(choice === 'gymnase' ? 'tous' : choice); setTimeout(locateOnMapOpen, 200); }
 }
