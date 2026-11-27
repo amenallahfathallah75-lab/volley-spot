@@ -4431,7 +4431,7 @@ function tournCardHTML(t){
       <span class="tc-date">${esc(tournDates(t).replace(/^./, ch=> ch.toUpperCase()))}</span>
       <b>${esc(t.title)}</b>
       <span class="tc-meta">${s[1]} ${s[0]}${t.format ? ' · ' + esc(t.format) : ''}</span>
-      <span class="tc-meta">${esc(club ? club.name : '')}${where ? ' · ' + esc(where) : ''}</span>
+      <span class="tc-meta">${esc([club ? club.name : '', where].filter(Boolean).join(' · '))}</span>
     </span>
   </button>`;
 }
@@ -4657,7 +4657,8 @@ function bindClubTournaments(club){
 }
 loadTournaments();
 (function openTournFromUrl(){
-  let id = null; try{ id = new URLSearchParams(location.search).get('tournoi'); }catch(e){}
+  let id = null, list = false; try{ const q = new URLSearchParams(location.search); id = q.get('tournoi'); list = q.has('tournois'); }catch(e){}
+  if(list && !id && SB_ON){ hideLandingScreen(); setTimeout(()=>{ hideHome(); openTournaments(); }, 300); return; }
   if(!id || !SB_ON) return;
   hideLandingScreen();
   loadTournaments().then(async ()=>{
