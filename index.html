@@ -3562,6 +3562,16 @@ function applyTopLevels(){
     codes.forEach(code=>{ if(!c.categories.includes(code)) c.categories.unshift(code); });
   });
 }
+/* Niveaux vérifiés sur la page officielle FFVolley du club pour la saison 2026/2027
+   (ffvbbeach.org, planning_club_class.php). Ils remplacent ceux de l'ancien annuaire,
+   qui datent de la saison précédente (montées et descentes non prises en compte). */
+const SEASON_LEVELS = {
+  '0750043': ['N3F','REG 1 M','REG 2 F','DEP M','DEP F','U18'] /* SCNP : plus de Pré-nationale M, descendu en Régional 1 */
+};
+function applySeasonLevels(){
+  clubs.forEach(c=>{ const l = SEASON_LEVELS[rawClubId(c)]; if(l) c.categories = l.slice(); });
+}
+applySeasonLevels();
 applyTopLevels();
 const QUICK_CATS = ['Tous','PRO M','PRO F','ELITE M','ELITE F','N2M','N2F','N3M','N3F','PRENAT M','PRENAT F','REG 1 M','REG 1 F','REG 2 M','REG 2 F','DEP M','DEP F','National'];
 let clubDepFilter = 'Tous';
