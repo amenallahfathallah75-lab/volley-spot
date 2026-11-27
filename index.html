@@ -1980,6 +1980,14 @@ function ovPatch(x, o){
 /* Corbeille : les points retirés restent en mémoire (et en base) pour pouvoir être restaurés. */
 const TRASH = new Map(); /* clé -> { kind:'spot'|'club', obj } */
 function applyMapOverrides(){
+  /* Un point restauré ailleurs (autre appareil, corbeille, base) ressort de la corbeille locale. */
+  for(const [k, t] of TRASH){
+    const o = MAP_OV && MAP_OV[k];
+    if(o && o.hidden) continue;
+    TRASH.delete(k);
+    if(t.kind === 'spot'){ if(!spots.includes(t.obj)) spots.push(t.obj); }
+    else { if(!clubs.includes(t.obj)) clubs.push(t.obj); if(!clubsByName[t.obj.name]) clubsByName[t.obj.name] = t.obj; }
+  }
   if(!MAP_OV || !Object.keys(MAP_OV).length) return;
   spots = spots.filter(s=>{
     const o = MAP_OV[ovKey(s)];
